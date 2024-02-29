@@ -2,4 +2,7 @@ crewai==0.5.5
 python-dotenv
 werkzeug
 flask
-llama-index
+streamlit 
+openai 
+llama-index 
+nltk
