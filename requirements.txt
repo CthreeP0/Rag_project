@@ -1,7 +1,7 @@
-crewai==0.5.5
-python-dotenv
-werkzeug
-flask
+# crewai==0.5.5
+# python-dotenv
+# werkzeug
+# flask
 streamlit 
 openai 
 llama-index 
