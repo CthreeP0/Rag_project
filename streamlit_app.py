@@ -10,6 +10,9 @@ from llama_index.llms.openai import OpenAI
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any, List
 from utils import extract_information
+from langchain_community.chat_models import ChatOpenAI
+from langchain_core.messages import HumanMessage, SystemMessage
+import os
 
 # backwards compatibility
 try:
@@ -39,18 +42,15 @@ QUERY_TEMPLATE = """
 [Instruction] You will be provided with details such as the screening criteria, job description and job requirements.
 Please act as an impartial judge and evaluate the candidate's {criteria_str} based on the job description and job requirements. For this evaluation, you should primarily consider the following accuracy:
 [Accuracy]
-Score 1: The candidate's {criteria_str} is completely unrelated to job_description and job_requirements.
-Score 3: The candidate's {criteria_str} has minor relevance but does not align with job_description and job_requirements.
-Score 5: The candidate's {criteria_str} has moderate relevance but contains inaccuracies to job_description and job_requirements.
-Score 7: The candidate's {criteria_str} aligns with job_description and job_requirements. but has minor errors or omissions on either one of them.
-Score 10: The candidate's {criteria_str} is completely accurate and aligns very well with job_description and job_requirements.
+Score 1: The candidate's {criteria_str} is completely unrelated to job_description .
+Score 3: The candidate's {criteria_str} has minor relevance but does not align with job_description.
+Score 5: The candidate's {criteria_str} has moderate relevance but contains inaccuracies to job_description.
+Score 7: The candidate's {criteria_str} aligns with job_description. but has minor errors or omissions on either one of them.
+Score 10: The candidate's {criteria_str} is completely accurate and aligns very well with job_description.
         
 
 ### Job Description
 {job_description}
-
-### Job Requirements
-{job_requirements}
 
 ### Screening Criteria
 {criteria_str}
@@ -58,12 +58,12 @@ Score 10: The candidate's {criteria_str} is completely accurate and aligns very 
 
 # Define your ResumeScreenerPack class
 class ResumeScreenerPack(BaseLlamaPack):
-    def __init__(self, job_description: str, job_requirements: str, criteria: str, llm: Optional[LLM] = None) -> None:
+    def __init__(self, job_description: str, criteria: str, llm: Optional[LLM] = None) -> None:
         self.reader = extract_information
         llm = llm or OpenAI(model="gpt-3.5-turbo-0125")
         service_context = ServiceContext.from_defaults(llm=llm)
         self.synthesizer = TreeSummarize(output_cls=ResumeScreenerDecision, service_context=service_context)
-        self.query = QUERY_TEMPLATE.format(job_description=job_description, job_requirements=job_requirements, criteria_str=criteria)
+        self.query = QUERY_TEMPLATE.format(job_description=job_description, criteria_str=criteria)
 
     def get_modules(self) -> Dict[str, Any]:
         return {"reader": self.reader, "synthesizer": self.synthesizer}
@@ -77,76 +77,87 @@ class ResumeScreenerPack(BaseLlamaPack):
 def main():
     st.set_page_config(page_title="Chat with the Resume Parser Chatbot", page_icon="🦙", layout="centered", initial_sidebar_state="auto", menu_items=None)
     st.title("Chat with the Resume Parser Chatbot 💬🦙")
-    st.info("To start using the app: 1. key", icon="📃")
+    st.info("Fill in this form before you start!", icon="📃")
+    with st.form("my_form",clear_on_submit=False,border=True):
+        st.title('Resume Parser Form')
+        job_title = st.text_input(label=":rainbow[Job Title]", value="", on_change=None, placeholder="Insert your job title here", label_visibility="visible")
+        job_description = st.text_area(label=":rainbow[Job Description]", value="", on_change=None, placeholder="Insert your job description here", label_visibility="visible")
+
+
+        # Create a directory if it doesn't exist
+        save_dir = "uploaded_files"
+        os.makedirs(save_dir, exist_ok=True)
+
+        # File uploader
+        uploaded_files = st.file_uploader("Drop your resume here", accept_multiple_files=True)
+
+        # Check if files are uploaded
+        if uploaded_files is not None:
+            for uploaded_file in uploaded_files:
+                bytes_data = uploaded_file.read()
+                file_name = uploaded_file.name
+                file_path = os.path.join(save_dir, file_name)
+                
+                # Write the contents of the file to a new file
+                with open(file_path, "wb") as f:
+                    f.write(bytes_data)
+                
+                # Provide feedback to the user
+                st.write("File saved:", file_name)
+        else:
+            print("FAILED")
+        # Every form must have a submit button.
+        submitted = st.form_submit_button("Submit")
+    if submitted:
+        st.session_state.messages = [{"role": "assistant", 
+                                        "content": f'''These are the information that you've key in:\n
+                                                    Job Title: {job_title},Job Description: {job_description}\n
+                                                    '''}]
+        
+
+        with st.chat_message("assistant"):
+            with st.spinner("Thinking..."):
+                chat = ChatOpenAI(model='gpt-3.5-turbo-0125',temperature=0.4)
+                messages = [
+                    SystemMessage(
+                        content="""Please act as a hiring manager with 20 years experience. You will be provided a job title and its job description.\n
+                        [Instruction] 
+                        1. Determine all of the hiring criteria included in the job description.
+                        2. Assign weightage to each of the criteria based on its importance in the job position. The sum of the total weightage should be equals to 100
+                        3. Return them in a python dict.
+                        
+                        [Format of the dict]
+                        [{Criterion : 'criterion',Weightage : weightage}]"""
+                    ),
+                    HumanMessage(
+                        content=f"""
+                        [Job Title]
+                        {job_title}
+
+                        [Job Description]
+                        {job_description}
+                                """)]
+                response= chat.invoke(messages)
+                st.write(response)
+                message = {"role": "assistant", "content": response}
+                st.session_state.messages.append(message) # Add response to message history
 
     # Initialize the chat messages history
     if "messages" not in st.session_state.keys():
-        st.session_state.messages = [{"role": "assistant", "content": "Ask any question you want!"}]
+        st.session_state.messages = [{"role": "assistant", "content": "Fill in this form before you start!"}]
+
+
 
     @st.cache_resource(show_spinner=True)
-    def load_data(criteria):
+    def load_data(criteria,job_title,job_description):
         with st.spinner(text="Loading and indexing the Streamlit docs – hang tight! This should take 1-2 minutes."):
-            resume_path = "resume/JiaHao_Lo.pdf"
-            job_description = """Responsible for design, planning, and coordinating the implementation of Data Science work activities in the Group Digital with established structured processes and procedures to support PETRONAS's digital agenda.
-             
+            resume_path = "Ang Teik Hun Resume.pdf"
+            job_description = job_description
 
-            1) Technical & Professional Excellence
-
-            Responsible for ensuring data required for analytic models is of required quality and models are constructed to standards and deployed effectively.
-            Implement data science industry best practices, relevant cutting-edge technology, and innovation in projects to ensure the right solutions fulfill the business requirements.
-
-            2) Technical/Skill Leadership & Solutioning
-
-            Responsible for developing appropriate technical solutions to address business pain points with insights and recommendations.
-            Implement an established analytics strategy by adopting the right technologies and technical requirements when executing projects to ensure business value generation.
-            Execute operational excellence through continuous technical and process improvement initiatives within projects to improve operations efficiency and effectiveness within own activity & projects.
-
-            3) Technical Expertise
-
-            Track and follow up with relevant parties to ensure Technical Excellence Programmes are successfully deployed and integrated into work processes, documents, policies, and guidelines.
-            Participate in a community of practices and network with internal and external technical experts by identifying solutions to common problems and capturing and sharing existing data science knowledge for continuous excellence.
-
-             
-
-            Be part of our DS team in at least one of the following areas:
-
-            Machine Learning
-
-            Roles: Design analytics solutions for business problems; develop, evaluate, optimize, deploy and maintain models.
-
-            Tech stack: ML Algorithms, Python, SQL, Spark, Git, Cloud Services, Deep Learning frameworks, MLOps, etc
-
-             
-
-            Natural Language Processing
-
-            Roles: Design text analytics solutions for business problems; develop, evaluate, optimize, deploy and maintain text processing and analytics solutions.
-
-            Tech stack: Python, SQL, Git, NLTK, Deep Learning frameworks, MLOps, Text analytics, NLP, NLU, NLG, Language Models, etc
-
-             
-
-            Computer Vision
-
-            Roles: Design Image and video analytics solutions for business problems; develop, evaluate, optimize, deploy and maintain solutions
-
-            Tech stack: Tensorflow, OpenCV, Fastai, Pytorch, MLFlow, Spark, MLlib Python, SQL, Git, Deep Learning frameworks, MLOps, etc
-
-             
-
-            Optimization / Simulation
-
-            Roles: Design optimization/simulation analytics solutions for business problems; develop, evaluate, optimize, deploy and maintain solutions
-
-            Tech stack: mathematical/process models, Simulation modeling, AnyLogic, Simio, mixed-integer programming (linear and nonlinear), Python, Pyomo, Gurobi solver, MLOps, etc."""
-
-            job_requirements = """
-            BS or MS in Data Science 5 to 15 years of experience in electronic package design/ mechanical enclosure design for hand held products.
-            """
             criteria_list = criteria
             result = []
             for criteria in criteria_list:
-                resume_screener = ResumeScreenerPack(job_description=job_description, job_requirements=job_requirements, criteria=criteria)
+                resume_screener = ResumeScreenerPack(job_description=job_description, criteria=criteria)
                 response = resume_screener.run(resume_path=resume_path)
                 result.append(str(response))
             return result
@@ -171,7 +182,7 @@ def main():
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
                 criteria_list = string_to_list(prompt)
-                response = st.session_state.chat_engine(criteria_list)
+                response = st.session_state.chat_engine(criteria_list,job_title,job_description)
                 st.write(response)
                 message = {"role": "assistant", "content": response}
                 st.session_state.messages.append(message) # Add response to message history

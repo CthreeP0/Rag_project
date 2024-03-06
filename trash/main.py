@@ -3,9 +3,6 @@ from textwrap import dedent
 from agents import TravelAgents
 from tasks import TravelTasks
 
-from dotenv import load_dotenv
-load_dotenv()
-
 
 class TripCrew:
     def __init__(self, origin, cities, date_range, interests):
@@ -54,9 +51,9 @@ class TripCrew:
                     local_tour_guide
                     ],
             tasks=[
-                identify_city,
-                gather_city_info,
                 plan_itinerary,
+                identify_city,
+                gather_city_info
             ],
             verbose=True,
         )
