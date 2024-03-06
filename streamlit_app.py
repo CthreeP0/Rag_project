@@ -77,7 +77,7 @@ class ResumeScreenerPack(BaseLlamaPack):
 def main():
     st.set_page_config(page_title="Chat with the Resume Parser Chatbot", page_icon="🦙", layout="centered", initial_sidebar_state="auto", menu_items=None)
     st.title("Chat with the Resume Parser Chatbot 💬🦙")
-    st.info("Check out the full tutorial to build this app in our [blog post](https://blog.streamlit.io/build-a-chatbot-with-custom-data-sources-powered-by-llamaindex/)", icon="📃")
+    st.info("To start using the app: 1. key", icon="📃")
 
     # Initialize the chat messages history
     if "messages" not in st.session_state.keys():
