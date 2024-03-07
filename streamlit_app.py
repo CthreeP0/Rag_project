@@ -21,7 +21,7 @@ except ImportError:
     from llama_index.core.llms.base import LLM
 
 
-
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Define your data models
 class CriteriaDecision(BaseModel):
