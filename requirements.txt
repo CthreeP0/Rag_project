@@ -1,9 +1,15 @@
-# crewai==0.5.5
-# python-dotenv
-# werkzeug
-# flask
-streamlit 
-openai 
+streamlit ==1.32.0
+openai
 llama-index 
 nltk
 langchain
+streamlit-chatbox
+chromadb
+langchain-openai
+pypdf
+rapidocr-onnxruntime
+openpyxl
+doc2pdf
+docx2pdf
+docxpy
+fpdf
