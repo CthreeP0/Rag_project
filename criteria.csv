@@ -1,0 +1,11 @@
+,criteria,weightage
+education_background,Bachelor's Degree,8
+cgpa,3.0,7
+technical_skill,"['Microsoft Office', 'Data Entry']",6
+total_experience_year,0-1,9
+professional_certificate,[],5
+total_similar_experience_year,0,4
+language,['English'],8
+soft_skill,"['Communication', 'Time Management']",9
+year_of_graduation,2024,7
+expected_salary,2000-3000 MYR,7

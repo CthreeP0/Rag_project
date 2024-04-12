@@ -1,72 +1,20 @@
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.chat_models import ChatOpenAI
-from langchain.chains import create_extraction_chain
-from llama_index.core.schema import Document
 import uuid
 import streamlit as st
 import time
 from typing import List, Optional
 from langchain_core.pydantic_v1 import BaseModel, Field
-
-
-class Candidate(BaseModel):
-    """Information about a candidate from his/her resume."""
-
-    # ^ Doc-string for the entity Person.
-    # This doc-string is sent to the LLM as the description of the schema Person,
-    # and it can help to improve extraction results.
-
-    # Note that:
-    # 1. Each field is an `optional` -- this allows the model to decline to extract it!
-    # 2. Each field has a `description` -- this description is used by the LLM.
-    # Having a good description can help improve extraction results.
-
-    name: Optional[str] = Field(..., description="The name of the candidate")
-    phone_number: Optional[str] = Field(
-        ..., description="The phone number of the candidate"
-    )
-    email: Optional[str] = Field(
-        ..., description="The email of the candidate"
-    )
-    local: Optional[str] = Field(
-        ..., description="Is the candidate Malaysian(Yes or No)?"
-    )
-    expected_salary: Optional[str] = Field(
-        ..., description="Candidate's expected salary in RM if known. (If the currency is Ringgit Malaysia, assign the numerical value or range values only Eg:'3000-3100'. If in other currency, assign alongside currency)"
-    )
-    current_location: Optional[List] = Field(
-        ..., description="Candidate's current location if known. If the candidate does not mention the country, assign the country based on the state and city (return it in a python list containing dictionary format like this 'Country': '', 'State': '', 'City': '' )"
-    )
-    education_background: Optional[List] = Field(
-        ..., description="Every single candidate's education background. (field of study, level (always expand to long forms), cgpa, university, Start Date, Year of Graduation (Year in 4-digits only, remove month). All in a python dict format."
-    )
-    professional_certificate: Optional[List] = Field(
-        ..., description="Candidate's professional certificates if known"
-    )
-    skill_group: Optional[List] = Field(
-        ..., description="Candidate's skill groups if known"
-    )
-    technology_programs_tool: Optional[List] = Field(
-        ..., description="Technology (Tools, Program, System) that the candidate knows if known."
-    )
-    language: Optional[List] = Field(
-        ..., description="Languages that the candidate knows"
-    )
-    previous_job_roles: Optional[List] = Field(
-        ..., description="Every single one of the candidate's (job title, job company, Industries (strictly classify according to to The International Labour Organization), start date and end date (only assign date time format if available. Do not assign duration), job location, Job Duration (Years) (if not in years, convert to years)) (If duration is stated, update the job duration instead.) in a python dict format."
-    )
-
-
-def generate_random_id():
-    random_id = uuid.uuid4()
-    return str(random_id)
-
-
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from datetime import datetime
+import base64
+from models import Candidate,Job
+import pandas as pd
 
-def extract_information(file_path):
+
+
+def extract_information(file_path,job_title):
     # Define a custom prompt to provide instructions and any additional context.
     # 1) You can add examples into the prompt template to improve extraction quality
     # 2) Introduce additional parameters to take context into account (e.g., include metadata
@@ -97,64 +45,65 @@ def extract_information(file_path):
                 * Method of duration calculation: Subtract the end date from start date to get the number of months. Finally sum up all relevant durations and convert to years. 
                 * Triple check your calculations. ","""
             ),
-            ("human", "{text}"),
+            ("human", "Job Title : {job_title}"
+                      "{text}"),
         ]
     )
 
     #loader = PyPDFLoader(file_path, extract_images=True)
     loader = PyPDFLoader(file_path)
     documents = loader.load()
-    document_objects = []
 
     llm = ChatOpenAI(model="gpt-3.5-turbo-0125", temperature=0.3)
     runnable = prompt | llm.with_structured_output(schema=Candidate)
-    result = runnable.invoke({"text": documents,"current_date":datetime.now()})
+    result = runnable.invoke({"job_title":job_title,"text": documents,"current_date":datetime.now()})
 
     return result
 
-# def extract_information(file_path):
-#     # Schema
-#     schema = {
-#         "properties": {
-#             "name": {"type": "string"},
-#             "phone_number": {"type": "string"},
-#             "email": {"type": "string"},
-#             "local": {"type": "string"},
-#             "last role": {"type": "string"},
-#             "years of experience": {"type": "string"},
-#             "education level": {"type": "string"},
-#             "CGPA": {"type": "integer"},
-#             "University": {"type": "string"},
-#             "Education Background": {"type": "string"},
-#             "Data Science Background": {"type": "string"},
-#             "Relevant experience": {"type": "string"},
-#         },
-#         "required": ["name", "height"],
-#     }
 
-#     loader = PyPDFLoader(file_path, extract_images=True)
-#     documents = loader.load()
-#     document_objects = []
+def define_criteria(job_title,job_description,job_requirement,applicant_category):
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                "You are an expert recruiting algorithm with 20 years experience in the recruiting industry. You will be provided with the job details (job title, applicant category, job description, job requirement). Execute all the tasks from step 1 to step 3 by strictly following the rules.\n"
+                "\n[Tasks]\n"
+                "1. Fill in relevant criteria's information based on the following job details with their properties.\n"
+                "2. If the criteria are not specified, you should apply your hiring knowledge to suggest details to the criteria.\n"
+                "3. Assign weightage to each of the criteria based on how important you feel they are in the job details.\n"
+                "\n[Rules]\n"
+                "- Make sure every criteria has one suggested detail.\n"
+                "- Do not return 'Not Specified' as detail, suggest at least one detail based on common market hiring criteria.\n"
+                "- You will penalized if you return 'Not Specified' as answer"
+            ),
+            ("human", 
+            "[Job Details]\n"
+            "Job Title : {job_title}\n"
+            "Applicant Category : {applicant_category}\n"
+            "Job Description : {job_description}\n"
+            "Job Requirement : {job_requirement}"),
+        ]
+    )
 
-#     # Run chain
-#     llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo-0125",verbose=True)
-#     chain = create_extraction_chain(schema, llm,verbose=True)
-#     result = chain.run(documents)
-#     metadata = {'page_label': '1', 'file_name': file_path}  
+    llm = ChatOpenAI(model="gpt-3.5-turbo-0125", temperature=0.4)
+    runnable = prompt | llm.with_structured_output(schema=Job)
+    result = runnable.invoke({"job_title":job_title,"job_description":job_description,"job_requirement":job_requirement,"applicant_category":applicant_category})
 
-#     # Create Document object
-#     document = Document(metadata=metadata,text=str(result))
-#     document_objects.append(document)
-#     return document_objects
+    criteria_data=[]
+    weightage_data=[]
+    
+    for field_name in result.criteria[0].__fields__:
+        criteria_data.append(getattr(result.criteria[0], field_name))
+        
+    for field_name in result.weightage[0].__fields__:
+        weightage_data.append(getattr(result.weightage[0], field_name))
 
-import base64
+    df = pd.DataFrame({'criteria': criteria_data, 'weightage': weightage_data})
+    df.index = [x for x in result.criteria[0].__fields__]
 
-def get_table_download_link():
-    """Generates a link allowing the data in a given Pandas dataframe to be downloaded"""
-    with open('results.xlsx', 'rb') as file:
-        data = file.read()
-        b64 = base64.b64encode(data).decode()
-        return f'<a href="data:application/octet-stream;base64,{b64}" download="results.xlsx">Download Excel file</a>'
+    df.to_csv('criteria.csv')
+
+    return df
 
 
 def init_session(self, clear: bool =False):
