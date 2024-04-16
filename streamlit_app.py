@@ -98,7 +98,7 @@ def main():
 
             # Create DataFrame
             df = pd.read_csv('criteria.csv')
-            edited_df = st.data_editor(df,num_rows='dynamic', key='df')
+            edited_df = st.data_editor(df,num_rows='dynamic',disabled=[''],key='df')
 
             favorite_command = edited_df.loc[edited_df["weightage"].idxmax()]["criteria"]
             st.markdown(f"Your favorite command is **{favorite_command}** 🎈")

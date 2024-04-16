@@ -13,3 +13,4 @@ doc2pdf
 docx2pdf
 docxpy
 fpdf
+spacy
