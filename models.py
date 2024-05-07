@@ -24,7 +24,7 @@ class Candidate(BaseModel):
         ..., description="Candidate's current location if known. If the candidate does not mention the country, assign the country based on the state and city (return it in a python list containing dictionary format like this 'Country': '', 'State': '', 'City': '' )"
     )
     education_background: Optional[List] = Field(
-        ..., description="Every single candidate's education background. (field of study, level (always expand to long forms), cgpa, university, Start Date, Year of Graduation (Year in 4-digits only, remove month). All in a python dict format."
+        ..., description="Every single candidate's education background. (field_of_study, level (always expand to long forms), cgpa (Example: 3.5/4.0), university, start_date, year_of_graduation (Year in 4-digits only, remove month). All in a python dict format."
     )
     professional_certificate: Optional[List] = Field(
         ..., description="Candidate's professional certificates if known"

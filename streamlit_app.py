@@ -8,6 +8,7 @@ from utils import extract_information,define_criteria
 from pdf_converter import doc2pdf
 import secrets,string
 import pandas as pd
+from assess_criteria_class import JobParser, ResumeParser
 
 load_dotenv(".env")
 os.environ["LANGCHAIN_TRACING_V2"] = "true"
@@ -98,7 +99,7 @@ def main():
 
             # Create DataFrame
             df = pd.read_csv('criteria.csv')
-            edited_df = st.data_editor(df,num_rows='dynamic',disabled=[''],key='df')
+            edited_df = st.data_editor(df,disabled=[''],key='df')
 
             favorite_command = edited_df.loc[edited_df["weightage"].idxmax()]["criteria"]
             st.markdown(f"Your favorite command is **{favorite_command}** 🎈")

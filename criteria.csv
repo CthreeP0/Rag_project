@@ -1,11 +1,11 @@
-,criteria,weightage
-education_background,Bachelor's Degree,8
-cgpa,3.0,7
-technical_skill,"['Microsoft Office', 'Data Entry']",6
-total_experience_year,0-1,9
-professional_certificate,[],5
-total_similar_experience_year,0,4
-language,['English'],8
-soft_skill,"['Communication', 'Time Management']",9
-year_of_graduation,2024,7
-expected_salary,2000-3000 MYR,7
+criteria,details,weightage,selected
+education_background,"Data Science, Computer Science, Engineering",9,TRUE
+cgpa,3,7,TRUE
+technical_skill,"['Python', 'Statistical Analysis', 'EDA', 'Machine Learning', 'Deep Learning', 'Model Deployment', 'MLOps']",10,TRUE
+total_experience_year,3,9,TRUE
+professional_certificate,['Not Specified'],5,TRUE
+total_similar_experience_year,3,8,TRUE
+language,['English'],7,TRUE
+soft_skill,"['Communication', 'Problem-solving', 'Critical Thinking']",9,TRUE
+year_of_graduation,2024,8,TRUE
+expected_salary,RM 6000 - RM 8000,8,TRUE

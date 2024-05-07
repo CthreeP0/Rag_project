@@ -98,7 +98,7 @@ def define_criteria(job_title,job_description,job_requirement,applicant_category
     for field_name in result.weightage[0].__fields__:
         weightage_data.append(getattr(result.weightage[0], field_name))
 
-    df = pd.DataFrame({'details': criteria_data, 'weightage': weightage_data})
+    df = pd.DataFrame({'details': criteria_data, 'weightage': weightage_data, 'selected':True})
     df.index = [x for x in result.criteria[0].__fields__]
     df.index.name='criteria'
 
