@@ -7,7 +7,15 @@ import ast
 import os
 from datetime import datetime
 from openai import OpenAI
-
+import numpy as np
+import pandas as pd
+import json
+import openai
+import math
+import urllib3
+from spacy.language import Language
+from spacy_langdetect import LanguageDetector
+import traceback
 
 class JobParser:
     def __init__(self, job_title:str, job_description:str,job_requirement:str):
@@ -50,28 +58,77 @@ class JobParser:
         return self
     
 class ResumeParser:
-    def __init__(self, job_title,job_description):
+    def __init__(self, job_title,job_description,job_requirement,embedding_skill_groups,embedding_technology):
         self.job_title = job_title
         self.job_description = job_description
+        self.job_requirement = job_requirement
+        self.embedding_skill_groups = embedding_skill_groups
+        self.embedding_technology = embedding_technology
         self.current_date = datetime.now()
         self.targEmp_industries_included = [] # from xlsx for 'included' ONLY
 
-    def evaluate_education_background(self, data_dict,input,weightage):
+    # function to parse range inputs 
+    def parse_range(input_string):
+        """
+        Parses the range string. 
+        # # Example usage
+        # input_string = "11.59-888"
+        # lower_limit, upper_limit, condition = parse_range(input_string)
+
+        Args:
+        input_string: A string containing formats like "<5.6", ">5", "=5.0", or "2.0-5".
+
+        Returns:
+        tuple: A tuple containing the lower limit, upper limit, and condition.
+        """
+        match = re.match(r'^\s*(<|>|=)?\s*([0-9]+(?:\.[0-9]+)?)(?:\s*-\s*([0-9]+(?:\.[0-9]+)?))?\s*$', input_string)
+        condition = ""
+        in_threshold_lower_limit = 0
+        in_threshold_upper_limit = 99999
+
+        if match:
+            condition = match.group(1)
+            values = match.group(2)
+
+            if condition == "<":
+                in_threshold_upper_limit = float(values)
+            elif condition == ">":
+                in_threshold_lower_limit = float(values)
+            elif condition == "=":
+                in_threshold_lower_limit = in_threshold_upper_limit = float(values)
+            elif match.group(3): # range 
+                condition = "range"
+                in_threshold_lower_limit = float(values)
+                in_threshold_upper_limit = float(match.group(3))
+            else: # exact value, same as "="
+                condition = "="
+                in_threshold_lower_limit = in_threshold_upper_limit = float(values)
+            # print(f"\tLower Limit: {in_threshold_lower_limit}, Upper Limit: {in_threshold_upper_limit}, Condition: {condition}")
+            
+        else:
+            # print (f"\tVal = {input_string}  Parse Range funtion detected: Invalid input format")
+            in_threshold_lower_limit, in_threshold_upper_limit = 0, 9999999
+
+        return in_threshold_lower_limit, in_threshold_upper_limit, condition
+
+
+    def evaluate_education_background(self,row, input, weightage):
         max_retries = 5
         retry_count = 0
+        
         try:
             edu_prompt_system = f"""[Instruction] You will be provided with details such as the preferred field of study, job_title, and the candidate's field of study.
-            Please act as an impartial judge and evaluate the candidate's field of study based on the job title and preferred education background. For this evaluation, you should primarily consider the following accuracy:
+            Please act as an impartial judge and evaluate the candidate's field of study based on the job_title and preferred education background. For this evaluation, you should primarily consider the following accuracy:
             [Accuracy]
-            Score 1: The candidate's field of study is completely unrelated to {input} and the job title stated.
-            Score 3: The candidate's field of study has minor relevance but does not align with {input} and the job title stated.
-            Score 5: The candidate's field of study has moderate relevance but contains inaccuracies to {input} and the job title stated.
-            Score 7: The candidate's field of study aligns with {input} and the job title stated but has minor errors or omissions on either one of them.
-            Score 10: The candidate's field of study is completely accurate and aligns very well with {input} and the job title stated.
+            Score 1: The candidate's field of study is completely unrelated to {input} and the job_title stated.
+            Score 3: The candidate's field of study has minor relevance but does not align with {input} and the job_title stated.
+            Score 5: The candidate's field of study has moderate relevance but contains inaccuracies to {input} and the job_title stated.
+            Score 7: The candidate's field of study aligns with {input} and the job_title stated but has minor errors or omissions on either one of them.
+            Score 10: The candidate's field of study is completely accurate and aligns very well with {input} and the job_title stated.
             
             [Rules]
-            1. If the candidate has several education background, you should always consider the most related to {input} and the job title only.
-            2. You should always ignore those that are unrelated to {input} and the job title and make sure they do not affect the total scoring.
+            1. If the candidate has several education background, you should always consider the most related to {input} and the job_title only.
+            2. You should always ignore those that are unrelated to {input} and the job_title and make sure they do not affect the total scoring.
             3. You should only assess the candidate's Field of Study and it's level. Ignore any other criterias.
 
             [Steps]
@@ -81,29 +138,32 @@ class ResumeParser:
             "Education Background Rating: [[6]].
 
             [Question]
-            How will you rate the candidate's education background based on the provided job title with preferred education background?
+            How will you rate the candidate's education background based on the provided job_title with preferred education background?
             """
 
             edu_prompt_user = f"""
             Preferred Field of Study: {input}
             
-            Job Title: {self.job_title}
+            job_title: {self.job_title}
 
             [The Start of Candidate's Education Background]
-            {data_dict['Education Background']}
+            {row['education_background']}
             [The End of Candidate's Education Background]
             """
-            client = ChatOpenAI()
+            
+            client = OpenAI()
             response = client.chat.completions.create(
                 messages=[
                     {"role": "system", "content": edu_prompt_system},
                     {"role": "user", "content": edu_prompt_user}
                 ],
-                model="gpt-35-turbo-0125",
+                model="gpt-3.5-turbo-0125",
                 temperature=0.3,
                 n=3,
             )
-            print("Response from edu",response)
+            
+            print("Response from edu", response)
+            
         except openai.RateLimitError as e:
             print(f"OpenAI rate limit exceeded. Pausing for one minute before resuming... (From RateLimitError)")
             print(e)
@@ -114,8 +174,7 @@ class ResumeParser:
                 print("Exceeded maximum retries for evaluating education background.... (From RateLimitError)")
                 return response
         
-        
-        # Extrdact the number using regex
+        # Extract the number using regex
         def extract_gpt_response_rating(response):
             ratings = []
             pattern = r'\[\[([\d]+)\]\]'
@@ -129,31 +188,30 @@ class ResumeParser:
                     # ratings = 0
                     ratings.append(0)
             return ratings
-        # takes in list of ratings from gpt rating response 
+        
+        # Calculate average rating
         def calculate_average_rating(ratings):
             if not ratings:
                 return 0
             return round(sum(ratings) / len(ratings))
 
+        # Calculate weighted score
         def calculate_weighted_score(average_rating, weightage):
             if average_rating is None:
                 return 0
-            return round(average_rating/10*weightage)
+            return round(average_rating / 10 * weightage)
                 
         edu_rating = extract_gpt_response_rating(response)
         average_rating = calculate_average_rating(edu_rating)
-        edu_weighted_score = calculate_weighted_score(average_rating,weightage)
-        print(f"Candidate: {data_dict['Name']}\t\t1. EDU Score:{edu_weighted_score}/{weightage}\t C: refer data_dict E: {input}\t ")
+        edu_weighted_score = calculate_weighted_score(average_rating, weightage)
         
-        pos = list(data_dict.keys()).index('Education Background')
-        items = list(data_dict.items())
-        items.insert(pos+1, ('Education Background Score', edu_weighted_score))
-        data_dict = dict(items)
-        return data_dict
+        print(f"Candidate: {row['name']}\t\t1. EDU Score:{edu_weighted_score}/{weightage}\t C: refer data_dict E: {input}\t ")
+        
+        return edu_weighted_score
 
-    def evaluate_cgpa(self,criterion_key, data_dict,input_cgpa, input_edu_b, weightage):
+    def evaluate_cgpa(data_dict,input_cgpa, weightage):
         out_weighted_cgpa_score = 0.0
-
+        c_cgpa = 0 #total 
 
         def get_normalize_cgpa(cgpa_str,standard_scale = 4.0):
             # Regex pattern to match CGPA values and their max scales
@@ -165,6 +223,8 @@ class ResumeParser:
                 cgpa = float(match.group(1))
                 max_cgpa = float(match.group(2)) if match.group(2) else standard_scale
 
+                print(cgpa,max_cgpa)
+
                 # Normalize CGPA to the standard scale
                 normalized_cgpa = (cgpa / max_cgpa) * standard_scale
                 print (f"""normalised cgpa:  {normalized_cgpa}, raw cgpa extracted: {cgpa_str}""")
@@ -174,66 +234,39 @@ class ResumeParser:
                 return float("0")
 
 
-        if 'Education Background' not in data_dict or not isinstance(data_dict['Education Background'], list):
-            data_dict[f'{criterion_key}'] = "No CGPA detected. Reason: Education Background not detected"
-            data_dict[f'{criterion_key} Score'] = 0.4 * weightage
+        if 'education_background' not in data_dict:
+            print(f"Candidate: {data_dict['name']}\t\t 2. CGPA Score:{out_weighted_cgpa_score}/{weightage}\t C CGPA(normalised): {c_cgpa} VS E: {input_cgpa} \t ")
+            return 0.4 * weightage
         else: 
-            pos = list(data_dict.keys()).index("Education Background Score") # assumption: we can only get cgpa Education Background is selected, add to the right 
-            items = list(data_dict.items())
-            items.insert(pos+1, (f'{criterion_key}', ""))
-            items.insert(pos+2, (f'{criterion_key} Score', 0))
-            data_dict = dict(items)
-
-            c_cgpa = 0 #total 
-            edu_cgpa = 0 #each edu 
-            count = 0
-
             print ("CGPA method 2: Getting latest available cgpa")
-            data_dict['Education Background'].sort(key=lambda x: x['Year of Graduation'], reverse=True)
-            for education_record in data_dict['Education Background']:
-                if type(education_record) is dict:
-                    # data_dict['Education Background'].sort(key=lambda x: x['Year of Graduation'], reverse=True)
-                    if education_record["CGPA"]  != "N/A" :
-                        c_cgpa = get_normalize_cgpa(education_record['CGPA'])
-                        break
+            data_list = ast.literal_eval(data_dict.education_background)
+            print(data_list)
+            data_list.sort(key=lambda x: int(x['year_of_graduation']), reverse=True)
+            print(data_list[0]['cgpa'])
+            if data_list[0]['cgpa']  != "N/A" :
+                c_cgpa = get_normalize_cgpa(data_list[0]['cgpa'])
 
-            if count > 1:
-                c_cgpa /= count  # Calculate the average normalised CGPA
             if float(c_cgpa) >= float(input_cgpa):
                 out_weighted_cgpa_score = 1.0 * weightage
             else:
-                out_weighted_cgpa_score = 0.4 * weightage 
-            print(f"Candidate: {data_dict['Name']}\t\t 2. CGPA Score:{out_weighted_cgpa_score}/{weightage}\t C CGPA(normalised): {c_cgpa} VS E: {input_cgpa}, {input_edu_b} \t ")
+                out_weighted_cgpa_score = 0.4 * weightage
+            print(f"Candidate: {data_dict['name']}\t\t 2. CGPA Score:{out_weighted_cgpa_score}/{weightage}\t C CGPA(normalised): {c_cgpa} VS E: {input_cgpa} \t ")
 
-            data_dict[f'{criterion_key}'] = c_cgpa
-            data_dict[f'{criterion_key} Score'] = out_weighted_cgpa_score
-        return data_dict
+        return out_weighted_cgpa_score
+
+
 
     def evaluate_skill_groups(self,data_dict,input,weightage):
-        
-        JD = JobParser(self.pdf_dir, self.job_title)
-        JD_skills = JD.extract_additional_skills()
-        result_list = [skill.strip().lower() for skill in input.split(",")]
-        data_dict_lower = [x.lower() for x in data_dict['Skill Groups']]
-        # Convert all strings in the list to lowercase
-        jd_skills_lower = [x.lower() for x in JD_skills.jd_skills]
-
-        if not data_dict_lower or (len(data_dict_lower) == 1 and data_dict_lower[0] == 'N/A'):  # If the list is empty or contains only 'N/A'
-            pos = list(data_dict.keys()).index('Skill Groups')
-            items = list(data_dict.items())
-            items.insert(pos+1, ('Skill Groups Score', 0))
-            data_dict = dict(items)
-            return data_dict
+        data_dict_lower = [x.lower() for x in data_dict['technical_skill']]
                 
         #Define embeddings model
-        embeddings_model = AzureOpenAIEmbeddings(azure_deployment='ada002')
+        embeddings_model = OpenAIEmbeddings(model='text-embedding-ada-002')
 
         #Embeds both list
         embedding1 = embeddings_model.embed_documents(data_dict_lower) #candidate skill groups
-        embedding2 = embeddings_model.embed_documents(jd_skills_lower+result_list) #required skill groups
 
         #Calculate the cosine similarity score from embeddings
-        similarity_test = cosine_similarity(embedding1,embedding2)
+        similarity_test = cosine_similarity(embedding1,self.embedding_skill_groups)
 
         def similarity_range_score(similarity_scores):
             categorical_scores = []
@@ -254,214 +287,34 @@ class ResumeParser:
             
         res = round(np.mean(similarity_range_score(similarity_test.max(axis=0)))*weightage,2)
         
-        
-        pos = list(data_dict.keys()).index('Skill Groups')
-        items = list(data_dict.items())
-        items.insert(pos+1, ('Skill Groups Score', res))
-        data_dict = dict(items)
-        
-        print(f"Candidate: {data_dict['Name']}\t\t3. SkillGroup Score:{res}/{weightage}\tC similairty score: {res} E: {input} \t ")
+        print(f"Candidate: {data_dict['name']}\t\t3. SkillGroup Score:{res}/{weightage}\tC similairty score: {res} E: {input} \t ")
             
-        return data_dict
+        return res
 
-    def evaluate_total_working_exp_years(self, data_dict, input_string, weightage):
-        
-        criterion_key,c_total_yr_exp, out_weighted_score = "Years of Total Work Experience", 0.0, 0.0
-
-        pos = list(data_dict.keys()).index("Previous job roles")
-        items = list(data_dict.items())
-        items.insert(pos+1, (f'{criterion_key}', ""))
-        items.insert(pos+2, (f'{criterion_key} Score', ""))
-        data_dict = dict(items)
-        
-        def parse_date(date_str):
-            # Handle other values gracefully
-            if date_str.lower() in ["n/a", "none"]:
-                return None
-            elif date_str.lower() in [ "present", "current", "now"]: 
-                return datetime.now()     
-            # Expanded corrections for non-standard month abbreviations to standard ones
-            corrections = {
-                "Jan": "Jan", "Feb": "Feb", "Mar": "Mar", "Apr": "Apr",
-                "May": "May", "Jun": "Jun", "Jul": "Jul", "Aug": "Aug",
-                "Sep": "Sep", "Sept": "Sep",  # Both 'Sep' and 'Sept' to 'Sep'
-                "Oct": "Oct", "Nov": "Nov", "Dec": "Dec",
-                "Mac": "Mar",  # Non-standard, common in some regions
-                # Add additional non-standard abbreviations as needed
-            }
-            # Replace non-standard abbreviations with their standard equivalents
-            for incorrect, correct in corrections.items():
-                if incorrect in date_str:
-                    date_str = date_str.replace(incorrect, correct)
-
-            # Extensive list of date formats to try parsing the date strings
-            date_formats = [
-                "%Y",
-                "%B %Y",  # Full month name and year
-                "%m %Y",
-                "%d %m %Y",
-                "%d-%m-%Y",
-                "%Y-%m-%d",
-                "%b %Y",  # Abbreviated month name and year
-                "%Y-%m",
-                "%m-%Y",
-                "%d %B %Y",
-                "%d %b %Y",
-                "%Y-%m-%d %H:%M:%S",
-                "%Y-%m-%d %H:%M:%S.%f",
-                "%m/%d/%Y",
-                "%m/%d/%y",
-                "%d/%m/%Y",
-                "%d/%m/%y",
-            ]
-
-            for fmt in date_formats:
-                try:
-                    return datetime.strptime(date_str, fmt)
-                except ValueError:
-                    continue  # If current format fails, try the next
-
-            # If all formats fail, print an error and return None
-            print(f"Error parsing date '{date_str}': does not match expected formats.")
-            return None
-        # def parse_date(date_str):
-        #     # Handle other values gracefully
-        #     if date_str.lower() in ["n/a", "none"]:
-        #         return None
-        #     elif date_str.lower() in [ "present", "current", "now"]: 
-        #         return datetime.now()     
-            
-        #     # Define multiple formats to try parsing the date strings
-        #     date_formats = ["%Y",
-        #                     "%B %Y",  # Full month name and year
-        #                     "%m %Y",
-        #                     "%d %m %Y",  # 
-        #                     "%Y-%m-%d",  # Year-month-day
-        #                     "%b %Y",  # Abbreviated month name and year
-        #                     "%Y-%m-%d %H:%M:%S.%f"]  # Full datetime format
-
-        #     for fmt in date_formats:
-        #         try:
-        #             return datetime.strptime(date_str, fmt)
-        #         except ValueError:
-        #             continue  # If current format fails, try the next
-
-        #     # If all formats fail, print an error and return None
-        #     print(f"Error parsing date '{date_str}': does not match expected formats.")
-        #     return None
-
-
-        # def parse_date(date_str, is_start_date=True):
-        #     # Handle non-date values gracefully
-        #     if date_str.lower() in ["n/a", "none"]:
-        #         return None
-        #     elif date_str.lower() in [ "present", "current", "now"]: 
-        #         return datetime.now()
-        #     try:
-        #         # Assuming the format for start date is "Mon YYYY" and end date is "YYYY-MM-DD HH:MM:SS.SSSSSS"
-        #         if is_start_date:
-        #             return datetime.strptime(date_str, "%b %Y")
-        #         else:
-        #             return datetime.strptime(date_str.split(" ")[0], "%Y-%m-%d")
-        #     except ValueError as e:
-        #         print(f"Error parsing date '{date_str}': {e}")
-        #         return None
-            
-        # def parse_date(date_str, is_start_date=True):
-        #     if date_str.lower() == 'present' or date_str.lower() == 'current':
-        #         return datetime.now()
-        #     else:
-        #         try:
-        #             return parser.parse(date_str)
-        #         except ValueError:
-        #             print ("parse date error")
-        #             # Date format not recognized, return today's date for start date,
-        #             # or the earliest possible date for end date
-        #             if is_start_date:
-        #                 # return datetime.now()
-        #                 return date_str
-        #             else:
-        #                 # return datetime.min
-        #                 return date_str
-        # Calculate the duration in years
-        def calculate_duration(start_date, end_date):
-            if start_date is None or end_date is None:
-                return 0
-            # if year given only, assume 6 months 
-            if start_date.year == end_date.year: 
-                return 0.5  #year
-            else: 
-                duration = (end_date - start_date).days / 365.25  # Adjusting for leap years
-            return duration
-        
-
-        # def manual_cal_total_exp (): 
-        #     total_duration = 0
-
-        #     # 1. Processing each job role + manually adding up durations to decimal points 
-        #     print ("METHOD: Manual calculation on total years of exp fields added:")
-        #     # Ensure data_dict['Previous job roles'] is a list of dictionaries
-        #     if isinstance(data_dict['Previous job roles'], list):
-        #         # Process each job role
-        #         for role in data_dict['Previous job roles']:
-        #             start_date = parse_date(role.get('Start Date', ''))
-        #             end_date = parse_date(role.get('End Date', ''), is_start_date=False)
-        #             if str(start_date).lower() != "n/a" and end_date != "n/a": 
-        #                 duration = calculate_duration(start_date, end_date)
-        #                 total_duration += duration
-        #                 print(f"Job Title: {role.get('Job Title', '')}, Duration: {duration:.2f} years")
-        #                 role['Job Duration (Years)'] = round(duration, 2)  # Append duration for each role
-        #             else: 
-        #                 print ("Manual total year of experience: start or end date format invalid")
-
-        #     else:
-        #         print("Previous job roles data is not in the expected format.")
-        #     print (f"Manual total yr: {total_duration}")
-        #     return total_duration
-
-        def manual_cal_total_exp():
-            total_duration = 0
-            print("METHOD: Manual calculation on total years of exp fields added:")
-            if isinstance(data_dict.get('Previous job roles', None), list):
-                for role in data_dict['Previous job roles']:
-                    start_date = parse_date(role.get('Start Date', ''))
-                    end_date = parse_date(role.get('End Date', ''))
-                    if start_date and end_date:  # Ensure both dates are valid
-                        duration = calculate_duration(start_date, end_date)
-                        total_duration += duration
-                        print(f"Job Title: {role.get('Job Title', 'Unknown')}, Duration: {duration:.2f} years")
-                        role['Job Duration (Years)'] = round(duration, 2)  # Append calculated duration for each role
-                    else:
-                        print("Start or end date format invalid or missing for one of the roles.")
-            else:
-                print("Previous job roles data is not in the expected format.")
-            print(f"Manual total yr: {total_duration:.2f}")
-            return total_duration
+    def evaluate_total_working_exp_years(self,data_dict, input_string, weightage):
+    
+        c_total_yr_exp, out_weighted_score = 0.0, 0.0
         
         def gpt_calc_total_exp():
-            # Check if 'Previous job roles' exists and is a list
-            if not isinstance(data_dict.get('Previous job roles', None), list):
-                return "Data structure is incorrect or 'Previous job roles' is missing."
+            # Check if 'previous_job_roles' exists and is a list
             
             total_duration = 0
-            for role in data_dict['Previous job roles']:
+            for role in data_dict['previous_job_roles']:
                 try:
                     # Attempt to convert job duration to float and add to total
-                    duration_str = role.get("Job Duration (Years)", "0")  # Default to "0" if not found
+                    duration_str = role.get("job_duration", "0")  # Default to "0" if not found
                     duration = float(duration_str)
                     total_duration += duration
                 except ValueError:
                     # Handle case where conversion to float fails
-                    print(f"Error converting job duration to float for role: {role.get('Job Title')}. Skipping this entry.")
+                    print(f"Error converting job duration to float for role: {role.get('job_title')}. Skipping this entry.")
                     continue  # Skip this entry and continue with the next
             print (f"gpt4 total yr: {total_duration}")
                     
             return round(total_duration, 2)
 
         # Manual: Total duration
-        total_duration_manual = manual_cal_total_exp()
         total_experience_gpt4 = gpt_calc_total_exp()
-        # print(f"Total yr_exp in years: {total_experience_gpt4:.2f}") #cause ValueError: Unknown format code 'f' for object of type 'str'
         # Use parse_range to get the lower and upper limits and condition
         in_threshold_lower_limit, in_threshold_upper_limit, condition = self.parse_range(input_string)
         try:
@@ -474,38 +327,24 @@ class ResumeParser:
                 out_weighted_score = 0.5 * weightage  # overqualified
             else:
                 out_weighted_score = 0
-            print(f"Candidate: {data_dict['Name']}\t\t4.Total years of experience Score:{out_weighted_score}/ {weightage}\t C:{c_total_yr_exp}, Required years: {input_string}\n ")
+            print(f"Candidate: {data_dict['name']}\t\t4.Total years of experience Score:{out_weighted_score}/ {weightage}\t C:{c_total_yr_exp}, Required years: {input_string}\n ")
         except ValueError:
             # Handle the case where conversion to float fails
             out_weighted_score = 0  
-
-        data_dict[f'{criterion_key}'] = total_experience_gpt4
-        data_dict[f'{criterion_key} Score'] = out_weighted_score
         
-        print("data_dict after twe",data_dict)
-        return data_dict
+        return total_experience_gpt4,out_weighted_score
 
     def evaluate_technology(self,data_dict,input,weightage):
-        print("tech now",data_dict)
-        result_list = [skill.strip().lower() for skill in input.split(",")]
+        data_dict_lower = [x.lower() for x in data_dict['technology_programs_tool']]
+                
         #Define embeddings model
-        embeddings_model = AzureOpenAIEmbeddings(azure_deployment='ada002')
-        data_dict_lower = [x.lower() if isinstance(x, str) else x for x in data_dict['Technology (Tools, Program, System)']]
-
-        if not data_dict_lower or (len(data_dict_lower) == 1 and data_dict_lower[0] == 'N/A'):  # If the list is empty or contains only 'N/A'
-            pos = list(data_dict.keys()).index('Technology (Tools, Program, System)')
-            items = list(data_dict.items())
-            items.insert(pos+1, ('Technology (Tools, Program, System) Score', 0))
-            data_dict = dict(items)
-            print(data_dict)
-            return data_dict
+        embeddings_model = OpenAIEmbeddings(model='text-embedding-ada-002')
 
         #Embeds both list
         embedding1 = embeddings_model.embed_documents(data_dict_lower) #candidate skill groups
-        embedding2 = embeddings_model.embed_documents(result_list) #required skill groups
 
         #Calculate the cosine similarity score from embeddings
-        similarity_test = cosine_similarity(embedding1,embedding2)
+        similarity_test = cosine_similarity(embedding1,self.embedding_technology)
 
         def similarity_range_score(similarity_scores):
             categorical_scores = []
@@ -522,19 +361,15 @@ class ResumeParser:
             print(categorical_scores)
 
             return categorical_scores
-            
+
         res = round(np.mean(similarity_range_score(similarity_test.max(axis=0)))*weightage,2)
-        pos = list(data_dict.keys()).index('Technology (Tools, Program, System)')
-        items = list(data_dict.items())
-        items.insert(pos+1, ('Technology (Tools, Program, System) Score', res))
-        data_dict = dict(items)
         
-        print(f"Candidate: {data_dict['Name']}\t\t3. Tech Score:{res}/{weightage}\tC similairty score: {res} E: {input} \t ")
+        print(f"Candidate: {data_dict['name']}\t\t3. SkillGroup Score:{res}/{weightage}\tC similairty score: {res} E: {input} \t ")
+            
+        return res
 
-        return data_dict
 
-
-    def evaluate_year_exp_role(self, data_dict, input, weightage, index):
+    def evaluate_year_exp_role(self,data_dict, input, weightage):
 
         def extract_yoer_similar(data_dict):
             max_retries = 5
@@ -543,7 +378,7 @@ class ResumeParser:
                 yoer_prompt_system = f"""[Instruction] 
                 You will be provided with details such as the candidate's previous job roles. Please act as a hiring manager with 20 years experience to evaluate the candidate's previous job roles.
                 1. Identify job roles that are similar to {self.job_title}. You should also consider roles that are related to {self.job_title}.
-                2. Output all of the duration of the related job roles into a python list.
+                2. Return all of the duration of the related job roles into a python list.
                 3. The output format should strictly follow the format in the example provided.
                 Example of the output: Total duration: [[2,3,4]]
 
@@ -552,11 +387,11 @@ class ResumeParser:
                 """
 
                 yoer_prompt_user = f"""
-                Candidate's Previous Job Roles: {data_dict["Previous job roles"]}
+                Candidate's Previous Job Roles: {data_dict["previous_job_roles"]}
                 """
-                client = AzureOpenAI()
+                client = OpenAI()
                 response = client.chat.completions.create(
-                    model="gpt-35-turbo-16k", # 3.5 turbo
+                    model="gpt-3.5-turbo-0125", # 3.5 turbo
                     messages=[
                         {"role": "system", "content": yoer_prompt_system},
                         {"role": "user", "content": yoer_prompt_user}
@@ -575,44 +410,6 @@ class ResumeParser:
                     print("Exceeded maximum retries for parsing PDF.... (From RateLimitError)")
                     return response
 
-        def extract_yoer_exact(data_dict):
-            max_retries = 5
-            retry_count = 0
-            try:
-                yoer_prompt_system = f"""[Instruction] 
-                You will be provided with details such as the candidate's previous job roles. Please act as a hiring manager with 20 years experience to evaluate the candidate's previous job roles.
-                1. Identify job roles that are specifically in {self.job_title}.
-                2. Output only all of the duration of the specific job roles into a python list.
-                3. The output format should strictly follow the format in the example provided.
-                Example of the output: Total duration: [[2,3,4]]
-
-                [Question]
-                What are the job durations for the job roles that are specific to {self.job_title} in the candidate's previous job experience?
-                """
-
-                yoer_prompt_user = f"""
-                Candidate's Previous Job Roles: {data_dict["Previous job roles"]}
-                """
-                client = AzureOpenAI()
-                response = client.chat.completions.create(
-                    model="gpt-35-turbo-16k", # 3.5 turbo 
-                    messages=[
-                        {"role": "system", "content": yoer_prompt_system},
-                        {"role": "user", "content": yoer_prompt_user}
-                    ],
-                    temperature=0.3
-                )
-                print("Response from yoer",response)
-                return response.choices[0].message.content
-            except openai.RateLimitError as e:
-                print(f"OpenAI rate limit exceeded. Pausing for one minute before resuming... (From RateLimitError)")
-                print(e)
-                time.sleep(30)
-                retry_count += 1
-
-                if retry_count >= max_retries:
-                    print("Exceeded maximum retries for parsing PDF.... (From RateLimitError)")
-                    return response
 
         def extract_duration(string):
             matches = re.findall(r'\[\[([0-9., ]+)\]\]', string)
@@ -651,34 +448,16 @@ class ResumeParser:
 
             return out_weighted_score
 
-        if 'Years of experience in similar role' in index:
-            response_yoer = extract_yoer_similar(data_dict)
-            yoer_list = extract_duration(response_yoer)
-            yoer_total = sum_floats_in_list(yoer_list)
-            res = calculate_yoer(yoer_total, input, weightage)
-            data_dict['Years of experience in similar role'] = yoer_total
-            pos = list(data_dict.keys()).index('Years of experience in similar role')
-            items = list(data_dict.items())
-            items.insert(pos+1, ('Years of experience in similar role Score', res))
-            data_dict = dict(items)
-            print(f"Candidate: {data_dict['Name']}\t\t8. Yr of Exp in Role Score:{res}/{weightage}\t C: {yoer_total} E: {input}")
-            return data_dict
-        else:
-            response_yoer = extract_yoer_exact(data_dict)
-            yoer_list = extract_duration(response_yoer)
-            yoer_total = sum_floats_in_list(yoer_list)
-            res = calculate_yoer(yoer_total, input, weightage)
-            data_dict['Years of experience in exact role'] = yoer_total
-            pos = list(data_dict.keys()).index('Years of experience in exact role')
-            items = list(data_dict.items())
-            items.insert(pos+1, ('Years of experience in exact role Score', res))
-            data_dict = dict(items)
-            
-            print(f"Candidate: {data_dict['Name']}\t\t8. Yr of Exp in Role Score:{res}/{weightage}\t C: {yoer_total} E: {input}")
-            return data_dict
 
-    # 11 
-    def evaluate_current_location(self, data_dict, input, weightage):
+        response_yoer = extract_yoer_similar(data_dict)
+        yoer_list = extract_duration(response_yoer)
+        yoer_total = sum_floats_in_list(yoer_list)
+        res = calculate_yoer(yoer_total, input, weightage)
+        print(f"Candidate: {data_dict['name']}\t\t8. Yr of Exp in Role Score:{res}/{weightage}\t C: {yoer_total} E: {input}")
+        
+        return yoer_total,res
+
+    def evaluate_current_location(self,data_dict, input, weightage):
 
         dataset_path = 'daerah-working-set.csv'
         city_data = pd.read_csv(dataset_path)
@@ -738,8 +517,8 @@ class ResumeParser:
         def clean_state(data_dict):
             try:
                 for key, value in state_mapping.items():
-                    if key.lower() in data_dict['Candidate Current Location'][0]['State'].lower():
-                        data_dict['Candidate Current Location'][0]['State'] = value
+                    if key.lower() in data_dict['current_location'][0]['State'].lower():
+                        data_dict['current_location'][0]['State'] = value
                         break
                 return data_dict
             except:
@@ -783,7 +562,7 @@ class ResumeParser:
             #Get coordinates for required location and candidate location
             latitude1, longitude1 = get_coordinates(cleaned_location['State'],cleaned_location['Country'])
             print(latitude1, longitude1)
-            latitude2, longitude2 = get_coordinates(data_dict['Candidate Current Location'][0]['State'], data_dict['Candidate Current Location'][0]['Country'])
+            latitude2, longitude2 = get_coordinates(data_dict['current_location'][0]['State'], data_dict['current_location'][0]['Country'])
             print(latitude2, longitude2)
             #Define the coast of required location and candidate location
             coast1 = get_city_coast(latitude1, longitude1)
@@ -799,15 +578,15 @@ class ResumeParser:
         def evaluate_location(cleaned_location,data_dict,weightage):
             try:
                 print(cleaned_location)
-                print(data_dict['Candidate Current Location'])
+                print(data_dict['current_location'])
                 # If candidate is in Malaysia
-                if cleaned_location['Country'].lower() == "malaysia" and data_dict['Candidate Current Location'][0]['Country'].lower() == "malaysia":
+                if cleaned_location['Country'].lower() == "malaysia" and data_dict['current_location'][0]['Country'].lower() == "malaysia":
                     # If Option 1 in excel
                     if cleaned_location['State'].lower() == 'n/a' and cleaned_location['City'].lower() == 'n/a':
                         return weightage
                     
                     # If same state
-                    elif (data_dict['Candidate Current Location'][0]['State'].lower() == cleaned_location['State'].lower()):
+                    elif (data_dict['current_location'][0]['State'].lower() == cleaned_location['State'].lower()):
                         # State = N/A
                         if cleaned_location['State'].lower() == 'n/a':
                             if cleaned_location['City'].lower() == 'n/a':
@@ -820,15 +599,15 @@ class ResumeParser:
                             return weightage
                         
                     # if not same state
-                    elif (data_dict['Candidate Current Location'][0]['State'].lower() != cleaned_location['State'].lower()):
+                    elif (data_dict['current_location'][0]['State'].lower() != cleaned_location['State'].lower()):
                         # same city
-                        if (data_dict['Candidate Current Location'][0]['City'].lower() == cleaned_location['City'].lower() == "N/A"):
+                        if (data_dict['current_location'][0]['City'].lower() == cleaned_location['City'].lower() == "N/A"):
                             return 0
                         else:
                             return evaluate_coordinate(cleaned_location,data_dict)
                         
                     # if same city
-                    elif (data_dict['Candidate Current Location'][0]['City'].lower() == cleaned_location['City'].lower()):
+                    elif (data_dict['current_location'][0]['City'].lower() == cleaned_location['City'].lower()):
                         # City = N/A
                         if cleaned_location['City'].lower() == 'n/a':
                             return 0
@@ -840,8 +619,8 @@ class ResumeParser:
                         
                 # If candidate is overseas
                 else:
-                    if data_dict['Candidate Current Location'][0]['Country'] == cleaned_location['Country']:
-                        print(cleaned_location['Country'],data_dict['Candidate Current Location'][0]['Country'])
+                    if data_dict['current_location'][0]['Country'] == cleaned_location['Country']:
+                        print(cleaned_location['Country'],data_dict['current_location'][0]['Country'])
                         return weightage
                     else:
                         return 0
@@ -854,26 +633,13 @@ class ResumeParser:
         cleaned_location = clean_location_string(input)
         cleaned_dict = clean_state(data_dict)
         out_location_score =  evaluate_location(cleaned_location,cleaned_dict,weightage)
-        pos = list(data_dict.keys()).index('Candidate Current Location')
-        items = list(data_dict.items())
-        items.insert(pos+1, ('Candidate Current Location Score', out_location_score))
-        data_dict = dict(items)
-        print("data dict at location",data_dict)
-        print (f"Candidate: {data_dict['Name']}\t\t 11. Location Score: {out_location_score}/{weightage}\t  E:{cleaned_location} C: {data_dict['Candidate Current Location']}\n")
-        return data_dict
+        print (f"Candidate: {data_dict['name']}\t\t 11. Location Score: {out_location_score}/{weightage}\t  E:{cleaned_location} C: {data_dict['current_location']}\n")
+        return out_location_score
 
 
-    # 12 
-    def evaluate_targetted_employer (self, data_dict, in_target_employer, in_weightage_employer): 
-        criterion_key, out_targetted_employer_score = "Targeted Employer", 0 # for this criterion, add "Targeted Employer" and "Targeted Employer Score" since not in data_dict
 
-        # initialising key at position 
-        pos = list(data_dict.keys()).index("Previous job roles")
-        items = list(data_dict.items())
-        items.insert(pos + 1, (f"{criterion_key}", ""))
-        items.insert(pos + 2, (f"{criterion_key} Score", ""))
-        data_dict = dict(items)
-        print (f"after assigning in eval targ emp: {data_dict}")
+    def evaluate_targetted_employer (self,data_dict, in_target_employer, in_weightage_employer): 
+        out_targetted_employer_score =  0
 
         # parse into include and excluded target comapanies 
         included_input = []
@@ -976,9 +742,9 @@ class ResumeParser:
 
             p = f'Classify the industries according to The International Labour Organization of the given company. Return results in the aforementioned output format. Given Company: {company_name}, located at {company_location}'
             try:
-                client = AzureOpenAI()
+                client = OpenAI()
                 response = client.chat.completions.create(
-                    model="gpt-35-turbo-16k", 
+                    model="gpt-3.5-turbo-0125", 
                     messages=[
                         {"role": "system", "content": system_p},
                         {"role": "user", "content": p_example},
@@ -986,7 +752,6 @@ class ResumeParser:
                         {"role": "user", "content": p}
                     ]
                 )
-                print("Response from edu",response)
                 try:
                     result = response.choices[0].message.content
                     industries_lst = extract_indsutries (result) if result else None 
@@ -1006,93 +771,6 @@ class ResumeParser:
             except Exception as ire:
                 print("InvalidReqError",ire)
                 return "undetected"
-            
-        def get_employer_industries(company_name):
-            '''
-                Returns the classified list of industries the target employer is possibly in 
-                according to The International Labour Organization 
-
-                Usage: 
-                - more precise and broad classification of industries given a company name 
-                - assigning more accurate industries to data_dict employers for future use 
-                
-            '''
-
-            # USER_AGENTS = [
-            # "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3",
-            # "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.3 Safari/605.1.15"
-            # # Add more user agents as needed
-            # ]
-            # proxy_pool = cycle(PROXIES)
-            # user_agent_pool = cycle(USER_AGENTS)
-
-            # def get_random_user_agent():
-            #     return random.choice(USER_AGENTS)
-
-            def google_search(company_name):
-                retry_count = 0
-                max_retries = 5
-                google_search_employer_desc_result = ""
-                while retry_count < max_retries:
-                    try:
-                        # Get company company description
-                        query = company_name + " company About Us"
-                        print(f"Googling company description: {query}")
-                        google_results = search(query, num_results=2, advanced=True, lang='en')
-
-                        for result in google_results:
-                            google_search_employer_desc_result += result.description
-                            # print(f"\n\tGoogle: {google_search_employer_desc_result}")                    
-                            print(f"\tGoogling: {query}")
-                        return google_search_employer_desc_result 
-                    except Exception as http_err:
-                            print(f"HTTP error 429 (Too Many Requests) occurred. Retrying...")
-                            retry_count += 1
-                            time.sleep(10)  # Wait for 60 seconds before retrying
-                return google_search_employer_desc_result+company_name
-                            
-                            
-            google_search_employer_desc_result = google_search(company_name)
-
-            # Classify employer industry by gpt
-            system_p = f"""you are a helpful assistant that accurately classifies company to their industries.You will be provided with details such as the candidate's previous job roles.
-            1. Cassify the industries the company falls into according to The International Labour Organization, based on the following search results of their company profile. Return in comma-separated values in a string.
-            2. Output only all of industries in python list.
-            3. The output format should strictly follow the format in the example provided - enclosed with double brackets, comma-seperated
-            Example of the output:
-                example 1:  [[Marketing, Food & Beverage, Shipping, Fashion, Cosmetics]]
-                example 2: 
-            """
-            in_target_employer_petronas_description = "Petronas is a Malaysian oil and gas company that is involved in upstream and downstream activities. It is the largest oil and gas company in Malaysia, with operations in more than 30 countries around the world. Petronas is involved in exploration, production, refining, marketing, trading, and distribution of petroleum products. It also has interests in petrochemicals, shipping, engineering services, power generation, and other related businesses."
-            p_example = f'[The Start of Company description] {in_target_employer_petronas_description}[The End of Company description] '
-            p_example_response_format = "[[Oil and Gas, Petrochemicals, Refining, Retail, Shipping, Exploration and Production, Engineering and Construction]]"
-            
-
-            p = f'Classify the industries the following company falls into according to The International Labour Organization, based on the following search results of their company profile. Return in comma-separated values in a string. Company: {google_search_employer_desc_result}'
-            try:
-                client = AzureOpenAI(
-                    azure_deployment = "gpt-35-turbo-16k"
-                )
-                response = client.chat.completions.create(
-                    model="gpt-35-turbo-16k", 
-                    messages=[
-                        {"role": "system", "content": system_p},
-                        {"role": "user", "content": p_example},
-                        {"role": "assistant", "content": p_example_response_format},
-                        {"role": "user", "content": p}
-                    ]
-                )
-                print("Response from edu",response)
-                try:
-                    result = response.choices[0].message.content
-                    industries_lst = extract_indsutries (result) if result else None 
-                    print (f'GPT response on industry: {result}\tEXTRACTED INDUSTRIES: {industries_lst}')
-                    return industries_lst
-                except KeyError:
-                    return "undetected"
-            except Exception as ire:
-                print("InvalidReqError",ire)
-                return "undetected"
 
         
         def check_if_matching_employer_industry():
@@ -1101,13 +779,11 @@ class ResumeParser:
                     user_input_bool: True if input is a list (ie from CVMatching xlsx since can be >1 company)
                     in_target_employer: Company Name
                 Used when candidate has not work in target employer specified, check for matching industries: 
-                    1. Use googlesearch to search for company background/description of target employer
-                    2. Ask GPT to classify the industries based on this description 
-                    3. Check against candidate's previous job company industries
-                    4. if candidate worked in similar industries: 50%, else 0%
+                    1. Ask GPT to classify the industries based on this description 
+                    2. Check against candidate's previous job company industries
+                    3. if candidate worked in similar industries: 50%, else 0%
             '''
             # variables
-            global gth_criteria_total_score  # Declare as global
             out_targetted_employer_score =  0
 
 
@@ -1123,21 +799,20 @@ class ResumeParser:
 
             print(f"GPT-ed Classified Industries.\t Included:{included_input} \tExcluded {excluded_input}. Included Industries{self.targEmp_industries_included}\t Candidate's data_dict['Industries']: {candidate_industries}\t Matched industries are: {matches}")
             if matches:
-                print (f"Candidate: {data_dict['Name']}\t\t 12. Targeted Employer Score: {out_targetted_employer_score}/{in_weightage_employer}\t Result: Case 2: Matching Industries are {matches}\n")
-                data_dict[f'{criterion_key}'] =  f"Matching industries detected: {matches}"
-                data_dict[f'{criterion_key} Score'] =  0.5*float(in_weightage_employer)
-                return data_dict
+                print (f"Candidate: {data_dict['name']}\t\t 12. Targeted Employer Score: {out_targetted_employer_score}/{in_weightage_employer}\t Result: Case 2: Matching Industries are {matches}\n")
+                res_employer = f"Matching industries detected: {matches}"
+                res_employer_score = 0.5*float(in_weightage_employer)
+                return res_employer,res_employer_score
             else:
-                print (f"Candidate: {data_dict['Name']}\t\t 12. Targeted Employer Score: {out_targetted_employer_score}/{in_weightage_employer}\t Result: Case 3: NO MATCHING INDUSTRY \n ")
-                data_dict[f'{criterion_key}']  =f"No exact match and no matching industry from past employers detected" 
-                data_dict[f'{criterion_key} Score'] =  0 
-                return data_dict
+                print (f"Candidate: {data_dict['name']}\t\t 12. Targeted Employer Score: {out_targetted_employer_score}/{in_weightage_employer}\t Result: Case 3: NO MATCHING INDUSTRY \n ")
+                res_employer = f"No exact match and no matching industry from past employers detected"
+                res_employer_score = 0
+                return res_employer,res_employer_score
 
         def worked_in_excluded(candidate_employers, excluded): 
             excluded_matches = []
             for x in candidate_employers:
-                    if x in excluded: 
-                    #  excluded_matches = f"WARNING: Candidate: {data_dict['Name']} 12. Targeted Employer: Candidate works in a company in 'excluded' company: {x} "
+                    if x in excluded:
                         excluded_matches = f"Exclusion detected[{x}]"
                         return excluded_matches, True 
             return excluded_matches, False      
@@ -1176,15 +851,15 @@ class ResumeParser:
             
         # Preprocessing inputs 
         req_employers = clean_employer_lst("".join(included_input))  # clean input from excel from common words 
-        candidate_employers = clean_employer_lst(",".join([role["Job Company"] for role in data_dict["Previous job roles"] if isinstance(role, dict)]))
+        candidate_employers = clean_employer_lst(",".join([role["job_company"] for role in data_dict["previous_job_roles"] if isinstance(role, dict)]))
         print(f"12. Evaluating Target Employer\tIncluded: {included_input} \t excluded: {excluded_input}\tCandidate's previous employers: {candidate_employers}")
 
         # Preprocessing Data_dict of candidate: Reassign GPT classified industries for candidate's each previous employer 
         overall_industries = set()
-        for x in data_dict["Previous job roles"]:
+        for x in data_dict["previous_job_roles"]:
             if isinstance(x, dict):
-                q = x['Job Company'] 
-                l = x["Job Location"] 
+                q = x['job_company'] 
+                l = x["job_location"] 
                 industries_list = get_employer_industries_gpt4(q, l)  # This now returns a list directly
                 
                 # Directly assign the list without splitting
@@ -1200,12 +875,8 @@ class ResumeParser:
         # Scoring Method
         # 1. Check if candidate work in excluded companies 
         exclusion_match, excluded_flag = worked_in_excluded(candidate_employers, excluded_input)
-        if excluded_flag: 
-            print("it did print!!!",exclusion_match)
-            data_dict[f'{criterion_key}'] =  str(exclusion_match)
-            data_dict[f'{criterion_key} Score'] =  0
-                
-            return data_dict
+        if excluded_flag:
+            return exclusion_match,0
         else:
             # 2. Check for exact match with cleaned lists (employer and user)
             matched_employer = []
@@ -1215,40 +886,28 @@ class ResumeParser:
                     continue
 
                 for required in req_employers:
-                    if re.search(fr'\b{re.escape(candidate)}\b', required, re.IGNORECASE):
+                    if re.search(fr'{re.escape(candidate)}', required, re.IGNORECASE):
                         matched_employer.append(candidate)
                         break # breaks right after matching 1 employer
-
-            # if matched_employer:
-            #     print (f"Candidate: {data_dict['Name']}\t\t 12. Targeted Employer Score: {out_targetted_employer_score}/{in_weightage_employer}\t  Result: Case 1: MATCHING EMPLOYER \t Matches = {matched_employer}\n)")
-            #     data_dict['Targeted Employer'] =  f"Inclusion detected: {matched_employer}"
-            #     data_dict["Targeted Employer Score"] = in_weightage_employer
-
-            # else: # 3: Check for related industry in candidate's past employers 
-            #     print ('\t...12. Target Employer: Checking for any past employers matching to industry of target employer')
-            #     data_dict = check_if_matching_employer_industry()
                     
             if not matched_employer:# 3: Check for related industry in candidate's past employers 
                 print ('\t...12. Target Employer: Checking for any past employers matching to industry of target employer')
-                data_dict = check_if_matching_employer_industry()
+                return check_if_matching_employer_industry()
                 
             else: # exact match employer 
-                print (f"Candidate: {data_dict['Name']}\t\t 12. Targeted Employer Score: {out_targetted_employer_score}/{in_weightage_employer}\t  Result: Case 1: MATCHING EMPLOYER \t Matches = {matched_employer}\n)")
-                data_dict[f'{criterion_key}'] =  f"Inclusion detected: {matched_employer}"
-                data_dict[f'{criterion_key} Score'] = float(in_weightage_employer)
-        return data_dict
+                print (f"Candidate: {data_dict['name']}\t\t 12. Targeted Employer Score: {out_targetted_employer_score}/{in_weightage_employer}\t  Result: Case 1: MATCHING EMPLOYER \t Matches = {matched_employer}\n)")
+                res_employer =  f"Inclusion detected: {matched_employer}"
+                res_employer_score = float(in_weightage_employer)
+        return res_employer,res_employer_score
 
-    # 14 
-    def evaluate_language_score(self, data_dict, input, weightage):
-        print("language now")
-        criterion_key = "Language"
-        match_percentage, rounded_score = 0,0
+    def evaluate_language_score(self,data_dict, input, weightage):
+        match_percentage = 0
         try:
-            custom_languages = ["Bahasa Melayu", "Bahasa Malaysia", "Malay"]
+            custom_languages = ["Bahasa Melayu", "Bahasa Malaysia", "Malay", "Melayu", "Bahasa"]
             def check_custom_languages(input_list):
                 return set(lang.lower()for lang in custom_languages if lang.lower() in input_list)
             
-            languages_str = ', '.join(data_dict['Language'])
+            languages_str = ', '.join(data_dict['language'])
 
             nlp = spacy.load('en_core_web_md')
             
@@ -1261,14 +920,12 @@ class ResumeParser:
                 doc1 = nlp(str(data_dict))
                 if doc1._.language['language']=='en':
                     languages_str='English'
-                    data_dict['Language'] = ['English']
+                    data_dict['language'] = ['English']
             doc1 = nlp(languages_str)
             doc2 = nlp(input)
             
             languages1 = set(ent.text.strip() for ent in doc1.ents if ent.label_ == "LANGUAGE")
-            print(languages1)
             languages2 = set(ent.text.strip() for ent in doc2.ents if ent.label_ == "LANGUAGE")
-            print(languages2)
 
             languages1.update(check_custom_languages(languages_str))
             languages2.update(check_custom_languages(input))
@@ -1280,32 +937,18 @@ class ResumeParser:
                 match_percentage = len(matched_languages) / len(languages2) * 100
             else:
                 match_percentage = 0
-            language_score = match_percentage/100*weightage
-            rounded_score = round(language_score)
-            #print (f"Candidate: {data_dict['Name']}\t\t 14. Language Score: {rounded_score}/{weightage}\t C:{languages_str}, E: {input} \n")
+            language_score = round(match_percentage/100*weightage)
+            print("Matched Languages: ",matched_languages)
+            print (f"Candidate: {data_dict['name']}\t\t 14. Language Score: {language_score}/{weightage}\t C:{languages1} {languages_str}, E: {input} \n")
             
-            # update data_dict
-            pos = list(data_dict.keys()).index(criterion_key)
-            items = list(data_dict.items())
-            items.insert(pos+1, (f'{criterion_key} Score', rounded_score))
-            data_dict = dict(items)
-            return data_dict
+            return language_score
             
         except Exception as e:
             print("Error on language",e)
             traceback.print_exc()  # This will print the traceback information
-            # update data_dict
-            pos = list(data_dict.keys()).index(criterion_key)
-            items = list(data_dict.items())
-            items.insert(pos+1, (f'{criterion_key} Score', 0))
-            data_dict = dict(items)
             return data_dict
-            
 
-    # 15 
-    def evaluate_salary_score(self, data_dict, input, weightage):
-        print("salary now")
-        criterion_key = "Expected Salary in RM"
+    def evaluate_salary_score(self,data_dict, input, weightage):
         """
         Checks if the candidate's expected salary matches the employer's range.
 
@@ -1317,53 +960,69 @@ class ResumeParser:
         int: Score indicating the match percentage.
         """
         # Assign 0 score for N/A or empty values
-        if  input in ("N/A", "", "-") or data_dict['Expected Salary in RM'] in ("N/A", "") :
+        if np.isnan(data_dict['expected_salary']):
             out_salary_score = 0
         else: 
             # Parse employer's expected salary range
-            # print ("Employer")
             in_exp_sal_llimit, in_exp_sal_ulimit, in_exp_sal_condition = self.parse_range(input)
 
             # Parse candidate's expected salary, calculate average if it's a range
             c_exp_sal = 0 # default is 0 
-            # print ("Candidate")
-            c_exp_sal_llimit, c_exp_sal_ulimit, c_exp_sal_condition = self.parse_range(data_dict['Expected Salary in RM'])
+            c_exp_sal_llimit, c_exp_sal_ulimit, c_exp_sal_condition = self.parse_range(data_dict['expected_salary'])
             if c_exp_sal_llimit != c_exp_sal_ulimit:
                 # Alternative: Calculate average for a range
                     # c_exp_sal = (c_exp_sal_llimit + c_exp_sal_ulimit) / 2  
                 c_exp_sal = c_exp_sal_llimit # assume lower limit when cv states sal range for now 
             else:
                 c_exp_sal = c_exp_sal_llimit  # Use lower limit as single value if cv input not a range
-            # print (f"\tCandidate expected salary: {c_exp_sal}")
 
             # Check if the candidate's expected salary falls within the employer's range
             if in_exp_sal_llimit <= c_exp_sal <= in_exp_sal_ulimit:
                 res = 1  # 100% 
             else:
-                # Extra:
-                # # Calculate a score based on how close the candidate's salary is to the employer's range
-                # range_width = in_exp_sal_ulimit - in_exp_sal_llimit
-                # if out_exp_sal_score < in_exp_sal_llimit:
-                #     res = max(0, 50 - ((in_exp_sal_llimit - out_exp_sal_score) / range_width) * 50)  # Decrease score as it's below range
-                # else:
-                #     res = max(0, 50 - ((out_exp_sal_score - in_exp_sal_ulimit) / range_width) * 50)  # Decrease score as it's above range
                 res = 0
             
             out_salary_score = res * weightage
 
-        # update data_dict
-        pos = list(data_dict.keys()).index(criterion_key)
-        items = list(data_dict.items())
-        items.insert(pos+1, (f'{criterion_key} Score', out_salary_score))
-        data_dict = dict(items)
-        print (f"Candidate: {data_dict['Name']}\t\t 15. Exp Salary in RM Score: {out_salary_score}\t Employer: {input}, Candidate: {data_dict['Expected Salary in RM']}\n ")
+        print (f"Candidate: {data_dict['name']}\t\t 15. Exp Salary in RM Score: {out_salary_score}\t Employer: {input}, Candidate: {data_dict['expected_salary']}\n ")
 
-        return data_dict
-    #10 
-    def evaluate_prof_cert_phrase(self, data_dict, input, weightage):
-        print("pro cert now")
+        return out_salary_score
+
+    def evaluate_prof_cert_phrase(self,data_dict, input, weightage):
+
+        def detect_match_phrases(resume, match_phrases):
+            matches = []
+            for phrase in match_phrases:
+                print("phrase",phrase)
+                if type(phrase) == list:
+                    for x in phrase:
+                        print("printing x",x)
+                        pattern = re.compile(fr'\b{re.escape(x)}\b', re.IGNORECASE)
+                        matches.extend(pattern.findall(resume.lower()))
+                        print("printing matches",matches)
+                else:
+                    # Use case-insensitive matching and convert to lowercase
+                    print(phrase)
+                    pattern = re.compile(fr'{phrase}', re.IGNORECASE)
+                    print(pattern)
+                    print("resume",resume)
+                    matches.extend(pattern.findall(resume.lower()))
+
+            # Remove duplicates by converting the list to a set and back to a list
+            unique_matches = list(set(matches))
+
+            return unique_matches
+        
+        def evaluate_candidate_score(matched_phrases, match_phrase_input, weightage):
+            # Calculate the score based on the weightage
+            score = round(len(matched_phrases) / len(match_phrase_input) * weightage,2)
+
+            return score
+        
+
         # Read the abbreviation CSV file
-        file_path = os.path.join(os.path.dirname(__file__), 'CVMatching_Prof_Cert_Wikipedia.xlsx')
+        # file_path = os.path.join(os.path.dirname(__file__), 'CVMatching_Prof_Cert_Wikipedia.xlsx')
+        file_path = 'CVMatching_Prof_Cert_Wikipedia.xlsx'
         abb_csv = pd.read_excel(file_path)
         abb_csv = abb_csv[['Name', 'Abbreviation']]
         abb_csv = abb_csv.dropna(subset=['Abbreviation']).reset_index(drop=True)
@@ -1372,8 +1031,8 @@ class ResumeParser:
         unique_elements = [ue.strip() for ue in input.split(",")]
 
         # Retrieve 'Professional Certificate' field from data_dict
-        professional_certificates = set(data_dict.get('Professional Certificate', []))
-        print("printing resume profc:",professional_certificates)
+        professional_certificates = data_dict['professional_certificate']
+        
         for phrase in unique_elements.copy():
             # Convert the current phrase to lowercase for case-insensitive comparison
             phrase_lower = phrase.lower()
@@ -1387,38 +1046,8 @@ class ResumeParser:
                 unique_elements.append([match['Name'].values[0],match['Abbreviation'].values[0]])
                 unique_elements.remove(phrase)
 
-        def detect_match_phrases(resume, match_phrases):
-            matches = []
-            for phrase in match_phrases:
-                print(phrase)
-                if type(phrase) == list:
-                    for x in phrase:
-                        print("printing x",x)
-                        pattern = re.compile(fr'\b{re.escape(x)}\b', re.IGNORECASE)
-                        matches.extend(pattern.findall(resume.lower()))
-                        print("printing matches",matches)
-                else:
-                    # Use case-insensitive matching and convert to lowercase
-                    pattern = re.compile(fr'\b{re.escape(phrase)}\b', re.IGNORECASE)
-                    matches.extend(pattern.findall(resume.lower()))
-
-            # Remove duplicates by converting the list to a set and back to a list
-            unique_matches = list(set(matches))
-
-            return unique_matches
-        
-        def evaluate_candidate_score(matched_phrases, match_phrase_input, weightage):
-            # Calculate the score based on the weightage
-            score = round(len(matched_phrases) / len(match_phrase_input) * weightage,2)
-
-            return score
-
-        
-        # Retrieve 'Professional Certificate' field from data_dict
-        professional_certificates = data_dict.get('Professional Certificate', [])
-
         # Convert data_dict to a string
-        data_dict_str = ' '.join(professional_certificates)
+        data_dict_str = ''.join(professional_certificates)
 
         # Detect matched phrases
         matched_phrases = detect_match_phrases(data_dict_str, unique_elements)
@@ -1427,66 +1056,88 @@ class ResumeParser:
         # Evaluate candidate score
         score = evaluate_candidate_score(matched_phrases, unique_elements, weightage)
         
-        pos = list(data_dict.keys()).index('Professional Certificate')
-        items = list(data_dict.items())
-        items.insert(pos+1, ('Professional Certificate Score', score))
-        data_dict = dict(items)
+        print (f"Candidate: {data_dict['name']}\t\t 10. Prof Cert Score: {score}/{weightage}\t Employer's Certs: {input},  Candidate's Certs: {professional_certificates}\n ")
         
-        print (f"Candidate: {data_dict['Name']}\t\t 10. Prof Cert Score: {score}/{weightage}\t Employer's Certs: {input},  Candidate's Certs: {professional_certificates}\n ")
-        
-        return data_dict
+        return score
 
-    def evaluate_year_grad_score(self, data_dict, input_year, weightage): 
-        print('Evaluating year of graduation now')
-        criterion_key, out_yr_grad  = "Years of Graduation", 0 
+    def evaluate_year_grad_score(self,data_dict, input_year, weightage): 
+        out_yr_grad  =  0 
 
-        # update data_dict
-        pos = list(data_dict.keys()).index("Education Background Score")
-        items = list(data_dict.items())
-        items.insert(pos+1, (f'{criterion_key}', ""))
-        items.insert(pos+2, (f'{criterion_key} Score', 0))
-        data_dict = dict(items)
-
-        if 'Education Background' not in data_dict or not isinstance(data_dict['Education Background'], list):
+        if 'education_background' not in data_dict:
             print("No educational background provided.")
-            out_yr_grad = 0 
-            data_dict[f'{criterion_key}'] = "No educational background provided."
-            data_dict[f'{criterion_key} Score' ] = out_yr_grad
+            return "No educational background provided.",0
         else: 
             # Sort education background by year of graduation once, after preprocessing
-            data_dict['Education Background'].sort(key=lambda x: x.get('Year of Graduation', ''), reverse=True)
+            data_list = ast.literal_eval(data_dict.education_background)
+            print(data_list)
+            data_list.sort(key=lambda x: int(x['year_of_graduation']), reverse=True)
             # Preprocess and validate year of graduation entries
             res = ""
-            for edu in data_dict['Education Background']:
-                if isinstance(edu, dict) and 'Year of Graduation' in edu:
-                    year_of_graduation = str(edu['Year of Graduation'])  # Ensure it's a string for comparison
-                    if not year_of_graduation.isdigit() and year_of_graduation.lower() not in ['present', 'current']:
-                        edu['Year of Graduation'] = 'N/A'
-                    elif year_of_graduation.lower() in ['present', 'current']:
-                        edu['Year of Graduation'] = 'Still Studying'
+            for edu in data_list:
+                year_of_graduation = str(edu['year_of_graduation'])  # Ensure it's a string for comparison
+                print(year_of_graduation)
+                if not year_of_graduation.isdigit() and year_of_graduation.lower() not in ['present', 'current']:
+                    edu['year_of_graduation'] = 'N/A'
+                elif year_of_graduation.lower() in ['present', 'current']:
+                    edu['year_of_graduation'] = 'Still Studying'
 
-                    year_of_graduation = str(edu.get('Year of Graduation')) 
-                    res += year_of_graduation + ", "
-                    if year_of_graduation == input_year:
-                        out_yr_grad = weightage
-
-
-            # # Evaluate year of graduation score
-            # for edu in data_dict['Education Background']:
-            #     if isinstance(edu, dict):
-            #         year_of_graduation = str(edu.get('Year of Graduation')) 
-            #         res += year_of_graduation + ", "
-            #         if year_of_graduation == input_year:
-            #             out_yr_grad = weightage
+                year_of_graduation = str(edu['year_of_graduation']) 
+                res += year_of_graduation + ", "
+                if year_of_graduation == input_year:
+                    out_yr_grad = weightage
 
             # Print the result
             res = res if res else "Not Specified" 
-            data_dict[f'{criterion_key}'] = res
-            data_dict[f'{criterion_key} Score'] = out_yr_grad
-            candidate_name = data_dict.get('Name', 'Unknown')
-            print(f"Candidate: {candidate_name}\t\t 16. Year of Grad: {out_yr_grad}\t Employer: {input_year},  Candidate: {res}")
+            print(f"16. Year of Grad: {out_yr_grad}\t Employer: {input_year},  Candidate: {res}")
 
-        return data_dict
+        return res,out_yr_grad
+    
+
+    def gpt_recommendation_summary(self,data_dict):
+        max_retries = 5
+        retry_count = 0
+        
+        data_df = pd.DataFrame.from_dict([data_dict])
+        df = data_df[['education_background', 'skill_group',
+        'technology_programs_tool',
+        'previous_job_roles', 'professional_certificate', 'language']]
+        candidate_info = df.to_dict()
+        
+        try:
+            yoer_prompt_system = f"""[Instruction]
+            You are the {self.job_title} recruiter, state all the alignments and misalignments of the candidate's qualifications and experience with the job description, and job requirements.
+
+            [Question]
+            - [Job Description]
+            {self.job_description}
+            - [Job Requirements]
+            {self.job_requirement}
+            """
+
+            yoer_prompt_user = f"""
+            {candidate_info}
+            """
+            client = OpenAI()
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo-0125", # 3.5 turbo 
+                messages=[
+                    {"role": "system", "content": yoer_prompt_system},
+                    {"role": "user", "content": yoer_prompt_user}
+                ],
+                temperature=0.3
+            )
+
+            return response.choices[0].message.content
+        except openai.RateLimitError as e:
+            print(f"OpenAI rate limit exceeded. Pausing for one minute before resuming... (From RateLimitError)")
+            print(e)
+            time.sleep(30)
+            retry_count += 1
+            response = "Error"
+
+            if retry_count >= max_retries:
+                print("Exceeded maximum retries for parsing PDF.... (From RateLimitError)")
+                return response
 
 
 

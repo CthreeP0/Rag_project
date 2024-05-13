@@ -1,11 +1,11 @@
 criteria,details,weightage,selected
-education_background,"Data Science, Computer Science, Engineering",9,TRUE
-cgpa,3,7,TRUE
-technical_skill,"['Python', 'Statistical Analysis', 'EDA', 'Machine Learning', 'Deep Learning', 'Model Deployment', 'MLOps']",10,TRUE
-total_experience_year,3,9,TRUE
-professional_certificate,['Not Specified'],5,TRUE
-total_similar_experience_year,3,8,TRUE
-language,['English'],7,TRUE
-soft_skill,"['Communication', 'Problem-solving', 'Critical Thinking']",9,TRUE
-year_of_graduation,2024,8,TRUE
-expected_salary,RM 6000 - RM 8000,8,TRUE
+education_background,Computer Science,9,True
+cgpa,3.0,7,True
+technical_skill,"['Python', 'R', 'SQL']",9,True
+total_experience_year,2,8,True
+professional_certificate,['Data Science Certification'],7,True
+total_similar_experience_year,1,7,True
+language,['English'],8,True
+soft_skill,"['Communication', 'Leadership']",9,True
+year_of_graduation,2024,8,True
+expected_salary,8000-10000 MYR,8,True

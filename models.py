@@ -7,6 +7,15 @@ from datetime import datetime
 class Candidate(BaseModel):
     """Information about a candidate from his/her resume."""
 
+    # ^ Doc-string for the entity Person.
+    # This doc-string is sent to the LLM as the description of the schema Person,
+    # and it can help to improve extraction results.
+
+    # Note that:
+    # 1. Each field is an `optional` -- this allows the model to decline to extract it!
+    # 2. Each field has a `description` -- this description is used by the LLM.
+    # Having a good description can help improve extraction results.
+
     name: Optional[str] = Field(..., description="The name of the candidate")
     phone_number: Optional[str] = Field(
         ..., description="The phone number of the candidate"
@@ -21,26 +30,27 @@ class Candidate(BaseModel):
         ..., description="Candidate's expected salary in RM if known. (If the currency is Ringgit Malaysia, assign the numerical value or range values only Eg:'3000-3100'. If in other currency, assign alongside currency)"
     )
     current_location: Optional[List] = Field(
-        ..., description="Candidate's current location if known. If the candidate does not mention the country, assign the country based on the state and city (return it in a python list containing dictionary format like this 'Country': '', 'State': '', 'City': '' )"
+        ..., description="Candidate's current location if known. If the candidate does not mention the country, assign the country based on the state and city. Return it in a python dict format with these three keys, example: {'Country': '', 'State': '', 'City': ''} "
     )
     education_background: Optional[List] = Field(
         ..., description="Every single candidate's education background. (field_of_study, level (always expand to long forms), cgpa (Example: 3.5/4.0), university, start_date, year_of_graduation (Year in 4-digits only, remove month). All in a python dict format."
     )
     professional_certificate: Optional[List] = Field(
-        ..., description="Candidate's professional certificates if known"
+        ..., description="Candidate's professional certificates stated in the resume, return each certificate as a string in a python list."
     )
-    technical_skill: Optional[List] = Field(
-        ..., description="Candidate's technical skill related to the job title the candidate knows"
+    skill_group: Optional[List] = Field(
+        ..., description="Every single candidate's skill groups stated in the resume, return each skills as a string in a python list."
     )
     technology_programs_tool: Optional[List] = Field(
-        ..., description="Technology (Tools, Program, System) related to job title that the candidate knows"
+        ..., description="Every single candidate's Technology (Tools, Program, System) related to job title stated in the resume, return each technology as a string in a python list."
     )
     language: Optional[List] = Field(
-        ..., description="Languages that the candidate knows"
+        ..., description="Languages that is stated in the resume, return each language as a string in a python list."
     )
     previous_job_roles: Optional[List] = Field(
-        ..., description="Every single one of the candidate's (job title, job company, Industries (strictly classify according to to The International Labour Organization), start date and end date (only assign date time format if available. Do not assign duration), job location, Job Duration (Years) (if not in years, convert to years)) (If duration is stated, update the job duration instead.) in a python dict format."
+        ..., description="Every single one of the candidate's (job_title, job_company, Industries (strictly classify according to to The International Labour Organization), start_date and end_date (only assign date time format if available. Do not assign duration), job_location, job_duration (return the job_duration in years), return in a python dict format."
     )
+
 
 
 # Pydantic Class for Criteria
@@ -68,8 +78,8 @@ class Criteria(BaseModel):
     language: Optional[List] = Field(
         ..., description="Preferred language required for the job. If not specified, suggest it."
     )
-    soft_skill: Optional[List] = Field(
-        ..., description="Preferred soft skills required for the job. If not specified, suggest the soft skills needed based on the job title for this applicant category."
+    targeted_employer: Optional[List] = Field(
+        ..., description="Preferred previous candidate company required for the job. If not specified, suggest it."
     )
     year_of_graduation: Optional[str] = Field(
         ..., description=f"Preferred year of graduation required for the job. If not specified, {datetime.now().year}"
