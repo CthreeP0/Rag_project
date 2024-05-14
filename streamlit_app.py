@@ -1,14 +1,15 @@
 import streamlit as st
 from langchain_community.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI,OpenAIEmbeddings
 from langchain_core.messages import HumanMessage, SystemMessage
 import os
-from resume_screener import ResumeScreenerPack
 from dotenv import load_dotenv
 from utils import extract_information,define_criteria
 from pdf_converter import doc2pdf
 import secrets,string
 import pandas as pd
 from assess_criteria_class import JobParser, ResumeParser
+import json
 
 load_dotenv(".env")
 os.environ["LANGCHAIN_TRACING_V2"] = "true"
@@ -105,11 +106,66 @@ def main():
             st.markdown(f"Criteria :**{favorite_command}** has the highest weightage 🎈")
 
             if st.button('Evaluate Now!'):
+                 st.session_state["post_evaluation"] = False
                  with st.chat_message("assistant"):
                     with st.spinner("Thinking..."):
                         edited_df.to_csv('criteria.csv', index=False)
 
-            st.write(st.session_state.df)
+                        def evaluate_criteria_pipeline(data_dict, criteria_df, resume_parser):
+                            data_dict['previous_job_roles'] = data_dict['previous_job_roles'].apply(lambda x: json.loads(x.replace("'", '"')))
+                            data_dict['current_location'] = data_dict['current_location'].apply(lambda x: json.loads(x.replace("'", '"')))
+                            data_dict['language'] = data_dict['language'].apply(lambda x: json.loads(x.replace("'", '"')))
+                            data_dict['professional_certificate'] = data_dict['professional_certificate'].apply(lambda x: json.loads(x.replace("'", '"')))
+                            data_dict['skill_group'] = data_dict['skill_group'].apply(lambda x: json.loads(x.replace("'", '"')))
+                            data_dict['technology_programs_tool'] = data_dict['technology_programs_tool'].apply(lambda x: json.loads(x.replace("'", '"')))
+
+                            for index, row in criteria_df.iterrows():
+                                details = row['details']
+                                weightage = row['weightage']
+                                selected = row['selected']
+                                
+                                if selected:
+                                    function_name = f"evaluate_{index}_score"
+                                    function = getattr(resume_parser, function_name)
+                                    
+                                    if index in ["total_experience_year", "total_similar_experience_year", "year_of_graduation", "targeted_employer"]:
+                                        # Functions that return two values
+                                        data_dict[[f"{index}", f"{index}_score"]] = data_dict.apply(lambda row: pd.Series(function(row, details, weightage)), axis=1)
+                                    else:
+                                        # Functions that return one value
+                                        data_dict[f"{index}_score"] = data_dict.apply(lambda row: function(row, details, weightage), axis=1)
+
+                            # Add the gpt_recommendation_summary step
+                            data_dict['gpt_recommendation_summary'] = data_dict.apply(lambda row: resume_parser.gpt_recommendation_summary(row), axis=1)
+                            
+                            return data_dict
+
+                        data_dict = pd.read_excel('results.xlsx',index_col=0)
+                        criteria = pd.read_csv('criteria.csv',index_col=0)
+
+                        # Initialize the JobParser class
+                        job_parser = JobParser(job_title, job_description, job_requirement)
+
+                        #Define embeddings model
+                        embeddings_model = OpenAIEmbeddings(model='text-embedding-ada-002')
+
+                        job_parser.extract_additional_skills()
+                        job_parser.create_embeddings_for_jd_skills(embeddings_model, criteria['details']['technical_skill'])
+                        job_parser.create_embeddings_for_technology(embeddings_model, criteria['details']['technology_programs_tool'])
+
+                        # Initialize ResumeParser object with JobParser object
+                        resume_parser = ResumeParser(job_title, job_description, job_requirement, job_parser)
+
+                        # Run the pipeline
+                        st.session_state.data_dict_final = evaluate_criteria_pipeline(data_dict, criteria, resume_parser)
+                        st.session_state.data_dict_final.to_csv('post_criteria_evaluation.csv', index=False)
+
+                        st.session_state["post_evaluation"] = True
+
+
+    if "post_evaluation" in st.session_state.keys():
+        st.write(st.session_state.data_dict_final)   
+
 
     # Initialize the chat messages history
     if "messages" not in st.session_state.keys():

@@ -80,8 +80,8 @@ def define_criteria(job_title,job_description,job_requirement,applicant_category
             "[Job Details]\n"
             "Job Title : {job_title}\n"
             "Applicant Category : {applicant_category}\n"
-            "Job Description : {job_description}\n"
-            "Job Requirement : {job_requirement}"),
+            "[Start of Job Description] {job_description} [End of Job Description] \n "
+            "[Start of Job Requirement] {job_requirement} [End of Job Requirement] "),
         ]
     )
 

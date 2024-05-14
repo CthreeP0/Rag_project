@@ -93,7 +93,7 @@ class ResumeParser:
         self.targEmp_industries_included = [] # from xlsx for 'included' ONLY
 
     # function to parse range inputs 
-    def parse_range(input_string):
+    def parse_range(self,input_string):
         """
         Parses the range string. 
         # # Example usage
@@ -289,7 +289,7 @@ class ResumeParser:
 
 
     def evaluate_technical_skill_score(self,data_dict,input,weightage):
-        data_dict_lower = [x.lower() for x in data_dict['technical_skill']]
+        data_dict_lower = [x.lower() for x in data_dict['skill_group']]
                 
         #Define embeddings model
         embeddings_model = OpenAIEmbeddings(model='text-embedding-ada-002')
@@ -298,7 +298,7 @@ class ResumeParser:
         embedding1 = embeddings_model.embed_documents(data_dict_lower) #candidate skill groups
 
         #Calculate the cosine similarity score from embeddings
-        similarity_test = cosine_similarity(embedding1,self.embedding_skill_groups)
+        similarity_test = cosine_similarity(embedding1,self.job_parser.embedding_skill_groups)
 
         def similarity_range_score(similarity_scores):
             categorical_scores = []
@@ -376,7 +376,7 @@ class ResumeParser:
         embedding1 = embeddings_model.embed_documents(data_dict_lower) #candidate skill groups
 
         #Calculate the cosine similarity score from embeddings
-        similarity_test = cosine_similarity(embedding1,self.embedding_technology)
+        similarity_test = cosine_similarity(embedding1,self.job_parser.embedding_tech)
 
         def similarity_range_score(similarity_scores):
             categorical_scores = []
@@ -489,7 +489,7 @@ class ResumeParser:
         
         return yoer_total,res
 
-    def evaluate_current_location(self,data_dict, input, weightage):
+    def evaluate_current_location_score(self,data_dict, input, weightage):
 
         dataset_path = 'daerah-working-set.csv'
         city_data = pd.read_csv(dataset_path)
@@ -1024,21 +1024,15 @@ class ResumeParser:
 
         def detect_match_phrases(resume, match_phrases):
             matches = []
-            for phrase in match_phrases:
-                print("phrase",phrase)
-                if type(phrase) == list:
-                    for x in phrase:
-                        print("printing x",x)
-                        pattern = re.compile(fr'\b{re.escape(x)}\b', re.IGNORECASE)
-                        matches.extend(pattern.findall(resume.lower()))
-                        print("printing matches",matches)
-                else:
-                    # Use case-insensitive matching and convert to lowercase
-                    print(phrase)
-                    pattern = re.compile(fr'{phrase}', re.IGNORECASE)
-                    print(pattern)
-                    print("resume",resume)
-                    matches.extend(pattern.findall(resume.lower()))
+            for certificate in resume:
+                for phrase in match_phrases:
+                    if isinstance(phrase, list):
+                        for x in phrase:
+                            pattern = re.compile(fr'\b{re.escape(x)}\b', re.IGNORECASE)
+                            matches.extend(pattern.findall(certificate.lower()))
+                    else:
+                        pattern = re.compile(fr'\b{re.escape(phrase)}\b', re.IGNORECASE)
+                        matches.extend(pattern.findall(certificate.lower()))
 
             # Remove duplicates by converting the list to a set and back to a list
             unique_matches = list(set(matches))
