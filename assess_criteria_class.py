@@ -57,13 +57,38 @@ class JobParser:
 
         return self
     
+    def create_embeddings_for_jd_skills(self, embeddings_model, result_list_skill):
+        # Convert skills to lowercase
+        jd_skills_lower = [x.lower() for x in self.jd_skills]
+        result_list_skill_lower = [skill.strip().lower() for skill in result_list_skill.split(",")]
+
+        # Create embeddings
+        self.embedding_skill_groups = embeddings_model.embed_documents(jd_skills_lower + result_list_skill_lower)
+
+        # Print the embeddings (or store them as needed)
+        print("Embeddings for JD skills and result list skills:", self.embedding_skill_groups)
+
+        return self.embedding_skill_groups
+    
+    def create_embeddings_for_technology(self, embeddings_model, result_list_tech):
+        # Convert skills to lowercase
+        result_list_tech_lower = [skill.strip().lower() for skill in result_list_tech.split(",")]
+
+        # Create embeddings
+        self.embedding_tech = embeddings_model.embed_documents(result_list_tech_lower)
+
+        # Print the embeddings (or store them as needed)
+        print("Embeddings for JD skills and result list skills:", self.embedding_tech)
+
+        return self.embedding_tech
+    
+
 class ResumeParser:
-    def __init__(self, job_title,job_description,job_requirement,embedding_skill_groups,embedding_technology):
+    def __init__(self, job_title,job_description,job_requirement,job_parser):
         self.job_title = job_title
         self.job_description = job_description
         self.job_requirement = job_requirement
-        self.embedding_skill_groups = embedding_skill_groups
-        self.embedding_technology = embedding_technology
+        self.job_parser = job_parser
         self.current_date = datetime.now()
         self.targEmp_industries_included = [] # from xlsx for 'included' ONLY
 
@@ -110,9 +135,16 @@ class ResumeParser:
             in_threshold_lower_limit, in_threshold_upper_limit = 0, 9999999
 
         return in_threshold_lower_limit, in_threshold_upper_limit, condition
+    
+    def run_evaluation(self, data_dict, criteria_df):
+        for index, row in criteria_df.iterrows():
+            if row['selected']:
+                function_name = f"evaluate_{row['criteria']}_score"
+                if hasattr(self, function_name):
+                    eval_function = getattr(self, function_name)
+                    eval_function(data_dict, row['details'], row['weightage'])
 
-
-    def evaluate_education_background(self,row, input, weightage):
+    def evaluate_education_background_score(self,data_dict, input, weightage):
         max_retries = 5
         retry_count = 0
         
@@ -147,7 +179,7 @@ class ResumeParser:
             job_title: {self.job_title}
 
             [The Start of Candidate's Education Background]
-            {row['education_background']}
+            {data_dict['education_background']}
             [The End of Candidate's Education Background]
             """
             
@@ -205,11 +237,11 @@ class ResumeParser:
         average_rating = calculate_average_rating(edu_rating)
         edu_weighted_score = calculate_weighted_score(average_rating, weightage)
         
-        print(f"Candidate: {row['name']}\t\t1. EDU Score:{edu_weighted_score}/{weightage}\t C: refer data_dict E: {input}\t ")
+        print(f"Candidate: {data_dict['name']}\t\t1. EDU Score:{edu_weighted_score}/{weightage}\t C: refer data_dict E: {input}\t ")
         
         return edu_weighted_score
 
-    def evaluate_cgpa(data_dict,input_cgpa, weightage):
+    def evaluate_cgpa_score(self,data_dict,input_cgpa, weightage):
         out_weighted_cgpa_score = 0.0
         c_cgpa = 0 #total 
 
@@ -256,7 +288,7 @@ class ResumeParser:
 
 
 
-    def evaluate_skill_groups(self,data_dict,input,weightage):
+    def evaluate_technical_skill_score(self,data_dict,input,weightage):
         data_dict_lower = [x.lower() for x in data_dict['technical_skill']]
                 
         #Define embeddings model
@@ -291,7 +323,7 @@ class ResumeParser:
             
         return res
 
-    def evaluate_total_working_exp_years(self,data_dict, input_string, weightage):
+    def evaluate_total_experience_year_score(self,data_dict, input_string, weightage):
     
         c_total_yr_exp, out_weighted_score = 0.0, 0.0
         
@@ -334,7 +366,7 @@ class ResumeParser:
         
         return total_experience_gpt4,out_weighted_score
 
-    def evaluate_technology(self,data_dict,input,weightage):
+    def evaluate_technology_programs_tool_score(self,data_dict,input,weightage):
         data_dict_lower = [x.lower() for x in data_dict['technology_programs_tool']]
                 
         #Define embeddings model
@@ -369,7 +401,7 @@ class ResumeParser:
         return res
 
 
-    def evaluate_year_exp_role(self,data_dict, input, weightage):
+    def evaluate_total_similar_experience_year_score(self,data_dict, input, weightage):
 
         def extract_yoer_similar(data_dict):
             max_retries = 5
@@ -638,7 +670,7 @@ class ResumeParser:
 
 
 
-    def evaluate_targetted_employer (self,data_dict, in_target_employer, in_weightage_employer): 
+    def evaluate_targeted_employer_score (self,data_dict, in_target_employer, in_weightage_employer): 
         out_targetted_employer_score =  0
 
         # parse into include and excluded target comapanies 
@@ -948,7 +980,7 @@ class ResumeParser:
             traceback.print_exc()  # This will print the traceback information
             return data_dict
 
-    def evaluate_salary_score(self,data_dict, input, weightage):
+    def evaluate_expected_salary_score(self,data_dict, input, weightage):
         """
         Checks if the candidate's expected salary matches the employer's range.
 
@@ -988,7 +1020,7 @@ class ResumeParser:
 
         return out_salary_score
 
-    def evaluate_prof_cert_phrase(self,data_dict, input, weightage):
+    def evaluate_professional_certificate_score(self,data_dict, input, weightage):
 
         def detect_match_phrases(resume, match_phrases):
             matches = []
@@ -1060,7 +1092,7 @@ class ResumeParser:
         
         return score
 
-    def evaluate_year_grad_score(self,data_dict, input_year, weightage): 
+    def evaluate_year_of_graduation_score(self,data_dict, input_year, weightage): 
         out_yr_grad  =  0 
 
         if 'education_background' not in data_dict:

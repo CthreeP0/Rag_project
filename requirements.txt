@@ -4,7 +4,7 @@ llama-index==0.10.25
 nltk==3.8.1
 langchain==0.1.13
 #streamlit-chatbox
-chromadb==0.4.24
+# chromadb==0.4.24
 langchain-openai==0.1.1
 pypdf==4.1.0
 rapidocr-onnxruntime==1.2.3
@@ -13,6 +13,7 @@ doc2pdf==0.2.0
 docx2pdf==0.1.8
 docxpy==0.8.5
 fpdf==1.7.2
-spacy==3.7.4
+spacy==3.5.0
 scikit-learn==1.4.2
 spacy_langdetect==0.1.2
+python-dotenv==1.0.1

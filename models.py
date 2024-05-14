@@ -66,6 +66,9 @@ class Criteria(BaseModel):
     technical_skill: Optional[List] = Field(
         ..., description="Technical skills that are relevant to the job details. If not specified, suggest it based on the job title."
     )
+    technology_programs_tool: Optional[List] = Field(
+        ..., description="Technology (Tools, Program, System) related to job title stated in the resume, return each technology as a string in a python list.  If not specified, suggest it based on the job title."
+    )
     total_experience_year: Optional[str] = Field(
         ..., description="Minimum/preferred total years of working experience required for the job. If not specified, suggest it based on the applicant category."
     )
@@ -101,6 +104,9 @@ class Weightage(BaseModel):
     )
     technical_skill_weigh: Optional[str] = Field(
         ..., description="Weightage assigned to the technical_skill criteria"
+    )
+    technology_skill_weigh: Optional[str] = Field(
+        ..., description="Weightage assigned to the technology_programs_tool criteria"
     )
     total_experience_year_weigh: Optional[str] = Field(
         ..., description="Weightage assigned to the total_experience_year criteria"

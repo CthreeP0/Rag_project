@@ -102,10 +102,12 @@ def main():
             edited_df = st.data_editor(df,disabled=[''],key='df')
 
             favorite_command = edited_df.loc[edited_df["weightage"].idxmax()]["criteria"]
-            st.markdown(f"Your favorite command is **{favorite_command}** 🎈")
+            st.markdown(f"Criteria :**{favorite_command}** has the highest weightage 🎈")
 
-            if st.button('Save dataframe'):
-                edited_df.to_csv('criteria.csv', index=False)
+            if st.button('Evaluate Now!'):
+                 with st.chat_message("assistant"):
+                    with st.spinner("Thinking..."):
+                        edited_df.to_csv('criteria.csv', index=False)
 
             st.write(st.session_state.df)
 
