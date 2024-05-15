@@ -1,12 +1,12 @@
 criteria,details,weightage,selected
-education_background,Data Science,9,True
-cgpa,3.0,7,True
-technical_skill,"['Machine Learning', 'Natural Language Processing', 'Computer Vision', 'Optimization/Simulation']",10,True
-technology_programs_tool,"['Python', 'SQL', 'Git', 'Spark', 'Deep Learning frameworks', 'MLOps']",9,True
-total_experience_year,2,8,True
-professional_certificate,[],5,True
-total_similar_experience_year,2,8,True
-language,['English'],7,True
-targeted_employer,Not Specified,6,True
-year_of_graduation,2024,6,True
-expected_salary,8000 - 12000 MYR,8,True
+education_background,Computer Science,20,True
+cgpa,3.0,10,True
+technical_skill,"['Python', 'R', 'SQL']",30,True
+technology_programs_tool,"['pandas', 'scikit-learn', 'matplotlib', 'seaborn']",20,True
+total_experience_year,2,10,True
+professional_certificate,['Not Specified'],10,True
+total_similar_experience_year,1,10,True
+language,['English'],10,True
+targeted_employer,Not Specified,10,True
+year_of_graduation,2024,5,True
+expected_salary,80000-100000 MYR,5,True

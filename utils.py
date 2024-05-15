@@ -26,7 +26,7 @@ def extract_information(file_path,job_title):
                 "You are an expert extraction algorithm with 20 years experience in the recruiting industry. You will be provided with candidate's resume."
                 "[Instruction] Extract relevant candidate's information mentioned in the following candidate's resume following the predefined properties. "
                 "1) Please provide an accurate answers, no guessing."
-                "2) Please return 'N/A' only if the information is not mentioned."
+                "2) Please return 'N/A' string for all the information that is not mentioned. Do not return NaN."
                 # "3) The response should strictly follow the Python dictionary format."
                 # "4) No need to return any reasoning as this is only for extraction of information."
                 "3) Extracted Properties of all Start date and End date: "

@@ -27,25 +27,25 @@ class Candidate(BaseModel):
         ..., description="Is the candidate Malaysian(Yes or No)?"
     )
     expected_salary: Optional[str] = Field(
-        ..., description="Candidate's expected salary in RM if known. (If the currency is Ringgit Malaysia, assign the numerical value or range values only Eg:'3000-3100'. If in other currency, assign alongside currency)"
+        ..., description="Candidate's expected salary in RM if known. (If the currency is Ringgit Malaysia, assign the numerical value or range values only Eg:'3000-3100'. If in other currency, assign alongside currency). Return 'N/A' if not found."
     )
     current_location: Optional[List] = Field(
-        ..., description="Candidate's current location if known. If the candidate does not mention the country, assign the country based on the state and city. **You must return them in key-value pairs with as the Country, State, City as keys. Example: {'Country': '', 'State': '', 'City': ''}  **"
+        ..., description="Candidate's current location if known. If the candidate does not mention the country, assign the country based on the state and city. **You must return them in key-value pairs with as the Country, State, City as keys. Example: {'Country': '', 'State': '', 'City': ''}  **. Return 'N/A' if not found."
     )
     education_background: Optional[List] = Field(
-        ..., description="Every single candidate's education background. (field_of_study, level (always expand to long forms), cgpa (Example: 3.5/4.0), university, start_date, year_of_graduation (Year in 4-digits only, remove month). Return in key-value pairs."
+        ..., description="Every single candidate's education background. (field_of_study, level (always expand to long forms), cgpa (Example: 3.5/4.0), university, start_date, year_of_graduation (Year in 4-digits only, remove month). Return in key-value pairs. Return 'N/A' if not found."
     )
     professional_certificate: Optional[List] = Field(
-        ..., description="Candidate's professional certificates stated in the resume, return each certificate as a string in a python list."
+        ..., description="Candidate's professional certificates stated in the resume, return each certificate as a string in a python list. Return 'N/A' if not found."
     )
     skill_group: Optional[List] = Field(
-        ..., description="Every single candidate's skill groups stated in the resume, return each skills as a string in a python list."
+        ..., description="Every single candidate's skill groups stated in the resume, return each skills as a string in a python list. Return 'N/A' if not found."
     )
     technology_programs_tool: Optional[List] = Field(
-        ..., description="Every single candidate's Technology (Tools, Program, System) related to job title stated in the resume, return each technology as a string in a python list."
+        ..., description="Every single candidate's Technology (Tools, Program, System) related to job title stated in the resume, return each technology as a string in a python list. Return 'N/A' if not found."
     )
     language: Optional[List] = Field(
-        ..., description="Languages that is stated in the resume, return each language as a string in a python list."
+        ..., description="Languages that is stated in the resume, return each language as a string in a python list. Return 'N/A' if not found."
     )
     previous_job_roles: Optional[List] = Field(
         ..., description="Every single one of the candidate's (job_title, job_company, Industries (strictly classify according to to The International Labour Organization), start_date and end_date (only assign date time format if available. Do not assign duration), job_location, job_duration (return the job_duration in years), return in a python dict format."

@@ -194,7 +194,7 @@ class ResumeParser:
                 n=3,
             )
             
-            print("Response from edu", response)
+            # print("Response from edu", response)
             
         except openai.RateLimitError as e:
             print(f"OpenAI rate limit exceeded. Pausing for one minute before resuming... (From RateLimitError)")
@@ -396,7 +396,7 @@ class ResumeParser:
 
         res = round(np.mean(similarity_range_score(similarity_test.max(axis=0)))*weightage,2)
         
-        print(f"Candidate: {data_dict['name']}\t\t3. SkillGroup Score:{res}/{weightage}\tC similairty score: {res} E: {input} \t ")
+        print(f"Candidate: {data_dict['name']}\t\t4. Technology Score:{res}/{weightage}\tC similairty score: {res} E: {input} \t ")
             
         return res
 
@@ -430,7 +430,7 @@ class ResumeParser:
                     ],
                     temperature=0.3,
                 )
-                print("Response from yoer",response)
+                # print("Response from yoer",response)
                 return response.choices[0].message.content
             except openai.RateLimitError as e:
                 print(f"OpenAI rate limit exceeded. Pausing for one minute before resuming... (From RateLimitError)")
