@@ -1,12 +1,11 @@
 criteria,details,weightage,selected
-education_background,Computer Science,9,True
-cgpa,3.5,8,True
-technical_skill,"['Python', 'R', 'SQL']",9,True
-technology_programs_tool,"['pandas', 'scikit-learn', 'matplotlib', 'seaborn']",8,True
-total_experience_year,2,7,True
-professional_certificate,['Data Science Certification'],6,True
-total_similar_experience_year,1,7,True
+education_background,Bachelor's Degree in Computer Science,8,True
+cgpa,3.0,7,True
+technical_skill,"['Python', 'Machine Learning', 'Data Analysis']",9,True
+total_experience_year,1,6,True
+professional_certificate,['Data Science Certificate'],7,True
+total_similar_experience_year,0,5,True
 language,['English'],8,True
-targeted_employer,Not Specified,9,True
+targeted_employer,"include(), exclude()",6,True
 year_of_graduation,2024,7,True
-expected_salary,6000 - 8000 MYR,8,True
+expected_salary,RM 4000 - RM 6000,7,True

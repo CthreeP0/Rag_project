@@ -30,7 +30,7 @@ class JobParser:
                 model="gpt-3.5-turbo-0125", #3.5 turbo
                 messages=[
                     {"role": "system", "content": f"""Assume yourself as a hiring manager, you will be provided the job description and job requirement for {self.job_title}.
-                     1. Extract the skills related to {self.job_title} from the text.
+                     1. Extract the skills, technologies, programs, tools related to {self.job_title} from the text.
                      2. Output only the skills without any addiitonal reasonings.
                      3. The output result should strictly follows the python list format.
                      Example: ['Python','SQL','Hadoop']"""},
@@ -70,17 +70,17 @@ class JobParser:
 
         return self.embedding_skill_groups
     
-    def create_embeddings_for_technology(self, embeddings_model, result_list_tech):
-        # Convert skills to lowercase
-        result_list_tech_lower = [skill.strip().lower() for skill in result_list_tech.split(",")]
+    # def create_embeddings_for_technology(self, embeddings_model, result_list_tech):
+    #     # Convert skills to lowercase
+    #     result_list_tech_lower = [skill.strip().lower() for skill in result_list_tech.split(",")]
 
-        # Create embeddings
-        self.embedding_tech = embeddings_model.embed_documents(result_list_tech_lower)
+    #     # Create embeddings
+    #     self.embedding_tech = embeddings_model.embed_documents(result_list_tech_lower)
 
-        # Print the embeddings (or store them as needed)
-        print("Embeddings for JD skills and result list skills:", self.embedding_tech)
+    #     # Print the embeddings (or store them as needed)
+    #     print("Embeddings for JD skills and result list skills:", self.embedding_tech)
 
-        return self.embedding_tech
+    #     return self.embedding_tech
     
 
 class ResumeParser:
@@ -366,39 +366,39 @@ class ResumeParser:
         
         return total_experience_gpt4,out_weighted_score
 
-    def evaluate_technology_programs_tool_score(self,data_dict,input,weightage):
-        data_dict_lower = [x.lower() for x in data_dict['technology_programs_tool']]
+    # def evaluate_technology_programs_tool_score(self,data_dict,input,weightage):
+    #     data_dict_lower = [x.lower() for x in data_dict['technology_programs_tool']]
                 
-        #Define embeddings model
-        embeddings_model = OpenAIEmbeddings(model='text-embedding-ada-002')
+    #     #Define embeddings model
+    #     embeddings_model = OpenAIEmbeddings(model='text-embedding-ada-002')
 
-        #Embeds both list
-        embedding1 = embeddings_model.embed_documents(data_dict_lower) #candidate skill groups
+    #     #Embeds both list
+    #     embedding1 = embeddings_model.embed_documents(data_dict_lower) #candidate skill groups
 
-        #Calculate the cosine similarity score from embeddings
-        similarity_test = cosine_similarity(embedding1,self.job_parser.embedding_tech)
+    #     #Calculate the cosine similarity score from embeddings
+    #     similarity_test = cosine_similarity(embedding1,self.job_parser.embedding_tech)
 
-        def similarity_range_score(similarity_scores):
-            categorical_scores = []
+    #     def similarity_range_score(similarity_scores):
+    #         categorical_scores = []
 
-            for score in similarity_scores:
-                if score >= 0.88:
-                    categorical_scores.append(1.0)
-                elif score >= 0.85:
-                    categorical_scores.append(0.5)
-                elif score >= 0.8:
-                    categorical_scores.append(0.3)
-                else:
-                    categorical_scores.append(0.0)
-            print(categorical_scores)
+    #         for score in similarity_scores:
+    #             if score >= 0.88:
+    #                 categorical_scores.append(1.0)
+    #             elif score >= 0.85:
+    #                 categorical_scores.append(0.5)
+    #             elif score >= 0.8:
+    #                 categorical_scores.append(0.3)
+    #             else:
+    #                 categorical_scores.append(0.0)
+    #         print(categorical_scores)
 
-            return categorical_scores
+    #         return categorical_scores
 
-        res = round(np.mean(similarity_range_score(similarity_test.max(axis=0)))*weightage,2)
+    #     res = round(np.mean(similarity_range_score(similarity_test.max(axis=0)))*weightage,2)
         
-        print(f"Candidate: {data_dict['name']}\t\t4. Technology Score:{res}/{weightage}\tC similairty score: {res} E: {input} \t ")
+    #     print(f"Candidate: {data_dict['name']}\t\t4. Technology Score:{res}/{weightage}\tC similairty score: {res} E: {input} \t ")
             
-        return res
+    #     return res
 
 
     def evaluate_total_similar_experience_year_score(self,data_dict, input, weightage):
@@ -549,8 +549,8 @@ class ResumeParser:
         def clean_state(data_dict):
             try:
                 for key, value in state_mapping.items():
-                    if key.lower() in data_dict['current_location'][0]['State'].lower():
-                        data_dict['current_location'][0]['State'] = value
+                    if key.lower() in data_dict['current_location']['State'].lower():
+                        data_dict['current_location']['State'] = value
                         break
                 return data_dict
             except:
@@ -594,7 +594,7 @@ class ResumeParser:
             #Get coordinates for required location and candidate location
             latitude1, longitude1 = get_coordinates(cleaned_location['State'],cleaned_location['Country'])
             print(latitude1, longitude1)
-            latitude2, longitude2 = get_coordinates(data_dict['current_location'][0]['State'], data_dict['current_location'][0]['Country'])
+            latitude2, longitude2 = get_coordinates(data_dict['current_location']['State'], data_dict['current_location']['Country'])
             print(latitude2, longitude2)
             #Define the coast of required location and candidate location
             coast1 = get_city_coast(latitude1, longitude1)
@@ -612,13 +612,13 @@ class ResumeParser:
                 print(cleaned_location)
                 print(data_dict['current_location'])
                 # If candidate is in Malaysia
-                if cleaned_location['Country'].lower() == "malaysia" and data_dict['current_location'][0]['Country'].lower() == "malaysia":
+                if cleaned_location['Country'].lower() == "malaysia" and data_dict['current_location']['Country'].lower() == "malaysia":
                     # If Option 1 in excel
                     if cleaned_location['State'].lower() == 'n/a' and cleaned_location['City'].lower() == 'n/a':
                         return weightage
                     
                     # If same state
-                    elif (data_dict['current_location'][0]['State'].lower() == cleaned_location['State'].lower()):
+                    elif (data_dict['current_location']['State'].lower() == cleaned_location['State'].lower()):
                         # State = N/A
                         if cleaned_location['State'].lower() == 'n/a':
                             if cleaned_location['City'].lower() == 'n/a':
@@ -631,15 +631,15 @@ class ResumeParser:
                             return weightage
                         
                     # if not same state
-                    elif (data_dict['current_location'][0]['State'].lower() != cleaned_location['State'].lower()):
+                    elif (data_dict['current_location']['State'].lower() != cleaned_location['State'].lower()):
                         # same city
-                        if (data_dict['current_location'][0]['City'].lower() == cleaned_location['City'].lower() == "N/A"):
+                        if (data_dict['current_location']['City'].lower() == cleaned_location['City'].lower() == "N/A"):
                             return 0
                         else:
                             return evaluate_coordinate(cleaned_location,data_dict)
                         
                     # if same city
-                    elif (data_dict['current_location'][0]['City'].lower() == cleaned_location['City'].lower()):
+                    elif (data_dict['current_location']['City'].lower() == cleaned_location['City'].lower()):
                         # City = N/A
                         if cleaned_location['City'].lower() == 'n/a':
                             return 0
@@ -651,8 +651,8 @@ class ResumeParser:
                         
                 # If candidate is overseas
                 else:
-                    if data_dict['current_location'][0]['Country'] == cleaned_location['Country']:
-                        print(cleaned_location['Country'],data_dict['current_location'][0]['Country'])
+                    if data_dict['current_location']['Country'] == cleaned_location['Country']:
+                        print(cleaned_location['Country'],data_dict['current_location']['Country'])
                         return weightage
                     else:
                         return 0
@@ -1125,7 +1125,6 @@ class ResumeParser:
         
         data_df = pd.DataFrame.from_dict([data_dict])
         df = data_df[['education_background', 'skill_group',
-        'technology_programs_tool',
         'previous_job_roles', 'professional_certificate', 'language']]
         candidate_info = df.to_dict()
         

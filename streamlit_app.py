@@ -91,30 +91,47 @@ def main():
                     df = pd.DataFrame([candidate_dict])
                     # Append the result DataFrame to the main DataFrame
                     result_df = pd.concat([result_df, df], ignore_index=True)
+                    
+                def format_info_field(extracted_info_dict, field_name):
+                    try:
+                        formatted_entries = []
+                        for i, entry in enumerate(extracted_info_dict.get(field_name, {}), start=1):
+                            output_string = f"{i}. "
+                            for key, value in entry.items():
+                                output_string += f"{key}: {value} | "  # Append key-value pairs
+                            formatted_entries.append(output_string)
+                        return '\n'.join(formatted_entries)
+                    except AttributeError:
+                        return ''
+                
+                
+                df_showcase_result = result_df.copy()    
+                single_row_previous_jobs = format_info_field(candidate_dict, "previous_job_roles")
+                df_showcase_result["previous_job_roles"] = single_row_previous_jobs
+                
+                single_row_edu_background = format_info_field(candidate_dict, "education_background")
+                df_showcase_result["education_background"] = single_row_edu_background
                 
 
                 # Display the Excel file in the chat and provide a download link
                 result_df.to_excel('results.xlsx')
-                st.session_state.messages = [{"role": "assistant", "content": f"Resume Parsing is done for all resumes! You may download the results from the link below!","type":'message'}]
-                message = {"role": "assistant", "content": result_df,"type":'dataframe'}
+                st.session_state.messages = [{"role": "assistant", "content": f"Resume Parsing is done for all resumes! You may hover to the table below to download the results!","type":'message'}]
+                
+                message = {"role": "assistant", "content": df_showcase_result,"type":'dataframe'}
                 st.session_state.messages.append(message)
 
     if "button_pressed" in st.session_state.keys():
         with st.sidebar:
             st.subheader('Define your evaluation criteria here!')
-
-            cols = st.columns(1)
-            if cols[0].button('Refresh'):
-                print("session state before clearing",st.session_state)
-                st.session_state.clear()
-                print("session state after clearing",st.session_state)
+            st.markdown("Please refer to [this link](https://github.com/yejui626/fyp_goo?tab=readme-ov-file#3-what-is-the-format-for-the-evaluating-criteria-details-that-users-should-follow) for the criteria details format.")
 
             # Create DataFrame
             df = pd.read_csv('criteria.csv')
-            edited_df = st.data_editor(df,disabled=[''],key='df')
+            edited_df = st.data_editor(df,disabled=['criteria'],key='df')
 
             favorite_command = edited_df.loc[edited_df["weightage"].idxmax()]["criteria"]
-            st.markdown(f"Criteria :**{favorite_command}** has the highest weightage 🎈")
+            selected_criterias = list(edited_df.loc[edited_df["selected"]]["criteria"])
+            
 
             if st.button('Evaluate Now!'):
                  st.session_state["post_evaluation"] = False
@@ -129,7 +146,6 @@ def main():
                             data_dict['language'] = data_dict['language'].apply(lambda x: json.loads(x.replace("'", '"')))
                             data_dict['professional_certificate'] = data_dict['professional_certificate'].apply(lambda x: json.loads(x.replace("'", '"')))
                             data_dict['skill_group'] = data_dict['skill_group'].apply(lambda x: json.loads(x.replace("'", '"')))
-                            data_dict['technology_programs_tool'] = data_dict['technology_programs_tool'].apply(lambda x: json.loads(x.replace("'", '"')))
 
                             for index, row in criteria_df.iterrows():
                                 details = row['details']
@@ -169,7 +185,6 @@ def main():
 
                         job_parser.extract_additional_skills()
                         job_parser.create_embeddings_for_jd_skills(embeddings_model, criteria['details']['technical_skill'])
-                        job_parser.create_embeddings_for_technology(embeddings_model, criteria['details']['technology_programs_tool'])
 
                         # Initialize ResumeParser object with JobParser object
                         resume_parser = ResumeParser(job_title, job_description, job_requirement, job_parser)
@@ -179,15 +194,28 @@ def main():
                         st.session_state.data_dict_final.to_excel('post_criteria_evaluation.xlsx', index=False)
 
                         st.session_state["post_evaluation"] = True
+                        st.session_state.messages.append({"role": "assistant", "content": "You can now start chatting with the results!","type":"message"})
+                        st.session_state.messages.append({"role": "assistant", "content": st.session_state.data_dict_final ,"type":"message"})
+                        
+            st.markdown(f"Criteria : **{favorite_command}** has the highest weightage 🎈")
+            st.markdown(f"Selected Criterias : **{selected_criterias}** 🎈")
+                        
+            st.divider()
+                        
+            cols = st.columns(1)
+            if cols[0].button('Refresh'):
+                print("session state before clearing",st.session_state)
+                st.session_state.clear()
+                print("session state after clearing",st.session_state)
 
 
     if "post_evaluation" in st.session_state.keys():
         st.write(st.session_state.data_dict_final)
         post_evaluation_chat = PandasChat()
         st.session_state.chat_engine = post_evaluation_chat
-        st.session_state.messages.append({"role": "assistant", "content": "You can now start chatting with the results!","type":"message"})
-
-
+        
+        
+        
     if "chat_engine" not in st.session_state.keys(): # Initialize the chat engine
         default_chat = DefaultChat()
         st.session_state.chat_engine = default_chat 
@@ -205,18 +233,12 @@ def main():
         with st.chat_message(message["role"]):
             st.write(message["content"])
 
-    def string_to_list(input_string):
-        return input_string.split(", ")
-
     # If last message is not from assistant, generate a new response
     if st.session_state.messages[-1]["role"] != "assistant":
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
-                criteria_list = string_to_list(prompt)
-                response = st.session_state.chat_engine(criteria_list,job_title,job_description)
-                st.write(response)
-                message = {"role": "assistant", "content": response,"type":"message"}
-                st.session_state.messages.append(message) # Add response to message history
+                response = st.session_state.chat_engine.chat(prompt)
+                st.session_state.messages.append({"role": "assistant", "content": response,"type":"message"}) # Add response to message history
 
 if __name__ == "__main__":
     main()

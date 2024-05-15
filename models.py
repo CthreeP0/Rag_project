@@ -30,26 +30,23 @@ class Candidate(BaseModel):
         ..., description="Candidate's expected salary in RM if known. (If the currency is Ringgit Malaysia, assign the numerical value or range values only Eg:'3000-3100'. If in other currency, assign alongside currency). Return 'N/A' if not found."
     )
     previous_job_roles: Optional[List] = Field(
-        ..., description="Every single one of the candidate's (job_title, job_company, Industries (strictly classify according to to The International Labour Organization), start_date and end_date (only assign date time format if available. Do not assign duration), job_location, job_duration (return the job_duration in years), return in a python dict format."
+        ..., description="Every single one of the candidate's (job_title, job_company, Industries (strictly classify according to to The International Labour Organization), start_date and end_date (only assign date time format if available. Do not assign duration), job_location, job_duration (return the job_duration in years and in string format), return in a python dict format. Assign N/A to the values of the key if not mentioned."
     )
     current_location: Optional[List] = Field(
         ..., 
-        description="Candidate's current location if known. If the candidate does not mention the country, assign the country based on the state and city. **You must return them in key-value pairs with as the Country, State, City as keys. Example: {'Country': '', 'State': '', 'City': ''}  **. Return 'N/A' if not found.",
-        regex = "\{\s*'Country'\s*:\s*'[^']*'\s*,\s*'State'\s*:\s*'[^']*'\s*,\s*'City'\s*:\s*'[^']*'\s*\}"
+        description="Candidate's current location/ address, assign the country based on the state and city. **You must return them in key-value pairs with Country, State, City as keys. Example: [{'Country': '', 'State': '', 'City': ''}] **",
+        pattern = '\[\{\s*"Country"\s*:\s*"[^"]*"\s*,\s*"State"\s*:\s*"[^"]*"\s*,\s*"City"\s*:\s*"[^"]*"\s*\}\]'
     )
     education_background: Optional[List] = Field(
         ..., 
-        description="Every single candidate's education background. (field_of_study, level (always expand to long forms), cgpa (Example: 3.5/4.0), university, start_date, year_of_graduation (Year in 4-digits only, remove month). Return in key-value pairs. Return 'N/A' if not found.",
-        regex= "\{\s*'field_of_study'\s*:\s*'[^']*'\s*,\s*'level'\s*:\s*'[^']*'\s*,\s*'cgpa'\s*:\s*'[^']*'\s*,\s*'university'\s*:\s*'[^']*'\s*,\s*'start_date'\s*:\s*'\d{4}-\d{2}'\s*,\s*'year_of_graduation'\s*:\s*'\d{4}'\s*\}"
+        description="Every single candidate's education background. (field_of_study, level (always expand to long forms), cgpa (Example: 3.5/4.0), university, start_date, year_of_graduation (Year in 4-digits only, remove month). Return in key-value pairs.",
+        pattern = '\{\s*"field_of_study"\s*:\s*"[^"]*"\s*,\s*"level"\s*:\s*"[^"]*"\s*,\s*"cgpa"\s*:\s*"[^"]*"\s*,\s*"university"\s*:\s*"[^"]*"\s*,\s*"start_date"\s*:\s*"\d{4}"\s*,\s*"year_of_graduation"\s*:\s*"\d{4}"\s*\}'
     )
     professional_certificate: Optional[List] = Field(
         ..., description="Candidate's professional certificates stated in the resume, return each certificate as a string in a python list. Return 'N/A' if not found."
     )
     skill_group: Optional[List] = Field(
-        ..., description="Every single candidate's skill groups stated in the resume, return each skills as a string in a python list. Return 'N/A' if not found."
-    )
-    technology_programs_tool: Optional[List] = Field(
-        ..., description="Every single candidate's Technology (Tools, Program, System) related to job title stated in the resume, return each technology as a string in a python list. Return 'N/A' if not found."
+        ..., description="Every single candidate's skill groups, Technology (Tools, Program, System) stated in the resume, return each skills/ technology as a string in a python list. Return 'N/A' if not found."
     )
     language: Optional[List] = Field(
         ..., description="Languages that is stated in the resume, return each language as a string in a python list. Return 'N/A' if not found."
@@ -67,23 +64,20 @@ class Criteria(BaseModel):
     cgpa: Optional[str] = Field(
         ..., description="Minimum threshold of cgpa for the candidate required for the job. If not specified, suggest it."
     )
-    technical_skill: Optional[List] = Field(
-        ..., description="Technical skills that are relevant to the job details. If not specified, suggest it based on the job title."
-    )
-    technology_programs_tool: Optional[List] = Field(
-        ..., description="Technology (Tools, Program, System) related to job title stated in the resume, return each technology as a string in a python list.  If not specified, suggest it based on the job title."
+    technical_skill: Optional[str] = Field(
+        ..., description="Technical skills that are relevant to the job details. If not specified, suggest it based on the job title. return each language as a string in a python list"
     )
     total_experience_year: Optional[str] = Field(
         ..., description="Minimum/preferred total years of working experience required for the job. If not specified, suggest it based on the applicant category."
     )
-    professional_certificate: Optional[List] = Field(
-        ..., description="Preferred professional certifications,licenses or accreditations required for the job. If not specified, suggest it based on the job title."
+    professional_certificate: Optional[str] = Field(
+        ..., description="Preferred professional certifications,licenses or accreditations required for the job. If not specified, suggest it based on the job title. return each language as a string in a python list"
     )
     total_similar_experience_year: Optional[str] = Field(
         ..., description="Minimum/preferred total years of working experience that is related to the job title required for the job. If not specified, suggest it based on the applicant category."
     )
-    language: Optional[List] = Field(
-        ..., description="Preferred language required for the job. If not specified, suggest it."
+    language: Optional[str] = Field(
+        ..., description="Preferred language required for the job. If not specified, suggest it. return each language as a string in a python list"
     )
     targeted_employer: Optional[str] = Field(
         ..., description="Preferred inclusion or exclusion of candidate's previous company required for the job. If not specified, suggest it. Return them in this format: include(), exclude()"
@@ -108,9 +102,6 @@ class Weightage(BaseModel):
     )
     technical_skill_weigh: Optional[str] = Field(
         ..., description="Weightage assigned to the technical_skill criteria"
-    )
-    technology_skill_weigh: Optional[str] = Field(
-        ..., description="Weightage assigned to the technology_programs_tool criteria"
     )
     total_experience_year_weigh: Optional[str] = Field(
         ..., description="Weightage assigned to the total_experience_year criteria"

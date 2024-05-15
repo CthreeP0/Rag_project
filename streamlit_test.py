@@ -3,6 +3,7 @@ from default_chat import DefaultChat
 from streamlit_pills import pills
 import os
 from dotenv import load_dotenv
+import pandas as pd
 
 
 load_dotenv(".env")
@@ -13,6 +14,10 @@ os.environ["LANGCHAIN_API_KEY"] = os.environ.get('LANGCHAIN_API_KEY')
 
 st.title("title bar : Chat with docs")
 st.info("Info bar", icon="📃")
+
+df = pd.read_excel('results.xlsx',index_col=0)
+
+st.write(df)
 
 
 predefined_prompt_selected = pills("Q&A", ["What is the purpose of the Resume Parser tool?", "What are the expected outputs for the extracted results?", "What is the format for the evaluating criteria details that users should follow?"], ["🍀", "🎈", "🌈"],clearable=True,index = None)

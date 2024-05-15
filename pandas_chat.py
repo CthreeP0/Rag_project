@@ -17,4 +17,4 @@ class PandasChat:
         )
         result = agent.invoke(user_question)
 
-        return result
+        return result['output']
