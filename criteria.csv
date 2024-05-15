@@ -1,12 +1,12 @@
 criteria,details,weightage,selected
-education_background,Computer Science or Engineering or Mathematics,8,True
+education_background,Data Science,9,True
 cgpa,3.0,7,True
-technical_skill,"R, SQL, Python, Scala, Java, C++",9,True
-technology_programs_tool,"R, SQL, Python, Scala, Java, C++, Tableau, Hadoop",9,True
-total_experience_year,1,6,True
+technical_skill,"['Machine Learning', 'Natural Language Processing', 'Computer Vision', 'Optimization/Simulation']",10,True
+technology_programs_tool,"['Python', 'SQL', 'Git', 'Spark', 'Deep Learning frameworks', 'MLOps']",9,True
+total_experience_year,2,8,True
 professional_certificate,[],5,True
-total_similar_experience_year,1,6,True
-language,['English'],4,True
-targeted_employer,"include(), exclude()",7,True
-year_of_graduation,2024,5,True
-expected_salary,5000 - 7000 MYR,8,True
+total_similar_experience_year,2,8,True
+language,['English'],7,True
+targeted_employer,Not Specified,6,True
+year_of_graduation,2024,6,True
+expected_salary,8000 - 12000 MYR,8,True

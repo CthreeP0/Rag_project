@@ -30,10 +30,10 @@ class Candidate(BaseModel):
         ..., description="Candidate's expected salary in RM if known. (If the currency is Ringgit Malaysia, assign the numerical value or range values only Eg:'3000-3100'. If in other currency, assign alongside currency)"
     )
     current_location: Optional[List] = Field(
-        ..., description="Candidate's current location if known. If the candidate does not mention the country, assign the country based on the state and city. Return it in a python dict format with these three keys, example: {'Country': '', 'State': '', 'City': ''} "
+        ..., description="Candidate's current location if known. If the candidate does not mention the country, assign the country based on the state and city. **You must return them in key-value pairs with as the Country, State, City as keys. Example: {'Country': '', 'State': '', 'City': ''}  **"
     )
     education_background: Optional[List] = Field(
-        ..., description="Every single candidate's education background. (field_of_study, level (always expand to long forms), cgpa (Example: 3.5/4.0), university, start_date, year_of_graduation (Year in 4-digits only, remove month). All in a python dict format."
+        ..., description="Every single candidate's education background. (field_of_study, level (always expand to long forms), cgpa (Example: 3.5/4.0), university, start_date, year_of_graduation (Year in 4-digits only, remove month). Return in key-value pairs."
     )
     professional_certificate: Optional[List] = Field(
         ..., description="Candidate's professional certificates stated in the resume, return each certificate as a string in a python list."
@@ -81,8 +81,8 @@ class Criteria(BaseModel):
     language: Optional[List] = Field(
         ..., description="Preferred language required for the job. If not specified, suggest it."
     )
-    targeted_employer: Optional[List] = Field(
-        ..., description="Preferred previous candidate company required for the job. If not specified, suggest it."
+    targeted_employer: Optional[str] = Field(
+        ..., description="Preferred inclusion or exclusion of candidate's previous company required for the job. If not specified, suggest it. Return them in this format: include(), exclude()"
     )
     year_of_graduation: Optional[str] = Field(
         ..., description=f"Preferred year of graduation required for the job. If not specified, {datetime.now().year}"

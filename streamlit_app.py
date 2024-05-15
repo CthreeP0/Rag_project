@@ -1,7 +1,5 @@
 import streamlit as st
-from langchain_community.chat_models import ChatOpenAI
-from langchain_openai import ChatOpenAI,OpenAIEmbeddings
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_openai import OpenAIEmbeddings
 import os
 from dotenv import load_dotenv
 from utils import extract_information,define_criteria
@@ -10,6 +8,9 @@ import secrets,string
 import pandas as pd
 from assess_criteria_class import JobParser, ResumeParser
 import json
+from default_chat import DefaultChat
+from pandas_chat import PandasChat
+from streamlit_pills import pills
 
 load_dotenv(".env")
 os.environ["LANGCHAIN_TRACING_V2"] = "true"
@@ -19,13 +20,13 @@ os.environ["LANGCHAIN_API_KEY"] = os.environ.get('LANGCHAIN_API_KEY')
 
 # Define your Streamlit app
 def main():
-    st.set_page_config(page_title="Chat with the Resume Parser", page_icon="🦙", layout="centered", initial_sidebar_state="auto", menu_items=None)
-    st.title("Chat with the Resume Parser 💬🦙")
+    st.set_page_config(page_title="Resume Parser", page_icon="🦙", layout="centered", initial_sidebar_state="auto", menu_items=None)
+    st.title("Generative AI Resume Parser 💬🦙")
     st.info("Fill in this form before you start!", icon="📃")
 
     with st.form("my_form",clear_on_submit=False,border=True):
         st.session_state.batch_token = "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(12))
-        st.title('Resume Parser Form')
+        # st.title('Resume Parser Form')
         job_title = st.text_input(label=":rainbow[Job Title]", value="", on_change=None, placeholder="Insert your job title here", label_visibility="visible")
         job_description = st.text_area(label=":rainbow[Job Description]", value="", on_change=None, placeholder="Insert your job description here", label_visibility="visible")
         job_requirement = st.text_area(label=":rainbow[Job Requirement]", value="", on_change=None, placeholder="Insert your job requirement here", label_visibility="visible")
@@ -57,6 +58,16 @@ def main():
             print("FAILED")
         # Every form must have a submit button.
         submitted = st.form_submit_button("Submit")
+
+    predefined_prompt_selected = pills("Q&A", ["What is the purpose of the Resume Parser tool?", "What are the expected outputs for the extracted results?", "What is the format for the evaluating criteria details that users should follow?"], ["🍀", "🎈", "🌈"],clearable=True,index = None)
+
+    if predefined_prompt_selected:
+        prompt = predefined_prompt_selected
+        with st.chat_message("assistant"):
+            with st.spinner("Thinking..."):
+                st.session_state.messages.append({"role": "user", "content": prompt})
+                response = st.session_state.chat_engine.chat(prompt)
+                st.session_state.messages.append({"role": "assistant", "content": response}) # Add response to message history
 
         
     if submitted:
@@ -112,6 +123,7 @@ def main():
                         edited_df.to_csv('criteria.csv', index=False)
 
                         def evaluate_criteria_pipeline(data_dict, criteria_df, resume_parser):
+                            total_score = 0
                             data_dict['previous_job_roles'] = data_dict['previous_job_roles'].apply(lambda x: json.loads(x.replace("'", '"')))
                             data_dict['current_location'] = data_dict['current_location'].apply(lambda x: json.loads(x.replace("'", '"')))
                             data_dict['language'] = data_dict['language'].apply(lambda x: json.loads(x.replace("'", '"')))
@@ -131,12 +143,18 @@ def main():
                                     if index in ["total_experience_year", "total_similar_experience_year", "year_of_graduation", "targeted_employer"]:
                                         # Functions that return two values
                                         data_dict[[f"{index}", f"{index}_score"]] = data_dict.apply(lambda row: pd.Series(function(row, details, weightage)), axis=1)
+                                        total_score += data_dict[f"{index}_score"]
                                     else:
                                         # Functions that return one value
                                         data_dict[f"{index}_score"] = data_dict.apply(lambda row: function(row, details, weightage), axis=1)
+                                        total_score += data_dict[f"{index}_score"]
 
                             # Add the gpt_recommendation_summary step
                             data_dict['gpt_recommendation_summary'] = data_dict.apply(lambda row: resume_parser.gpt_recommendation_summary(row), axis=1)
+                            data_dict['total_score'] = total_score
+
+                            # Sort data_dict by total_score in descending order
+                            data_dict = data_dict.sort_values(by='total_score', ascending=False).reset_index(drop=True)
                             
                             return data_dict
 
@@ -158,13 +176,21 @@ def main():
 
                         # Run the pipeline
                         st.session_state.data_dict_final = evaluate_criteria_pipeline(data_dict, criteria, resume_parser)
-                        st.session_state.data_dict_final.to_csv('post_criteria_evaluation.csv', index=False)
+                        st.session_state.data_dict_final.to_excel('post_criteria_evaluation.xlsx', index=False)
 
                         st.session_state["post_evaluation"] = True
 
 
     if "post_evaluation" in st.session_state.keys():
-        st.write(st.session_state.data_dict_final)   
+        st.write(st.session_state.data_dict_final)
+        post_evaluation_chat = PandasChat()
+        st.session_state.chat_engine = post_evaluation_chat
+        st.session_state.messages.append({"role": "assistant", "content": "You can now start chatting with the results!","type":"message"})
+
+
+    if "chat_engine" not in st.session_state.keys(): # Initialize the chat engine
+        default_chat = DefaultChat()
+        st.session_state.chat_engine = default_chat 
 
 
     # Initialize the chat messages history

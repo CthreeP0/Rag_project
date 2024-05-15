@@ -23,14 +23,13 @@ def extract_information(file_path,job_title):
         [
             (
                 "system",
-                "You are an expert extraction algorithm with 20 years experience in the recruiting industry. You will be provided with candidate's resume. "
-                "Extract relevant candidate's information mentioned in the following candidate's resume together with their properties. "
-                "If you do not know the value of an attribute asked to extract, "
+                "You are an expert extraction algorithm with 20 years experience in the recruiting industry. You will be provided with candidate's resume."
+                "[Instruction] Extract relevant candidate's information mentioned in the following candidate's resume following the predefined properties. "
                 "1) Please provide an accurate answers, no guessing."
                 "2) Please return 'N/A' only if the information is not mentioned."
-                "3) The response should strictly follow the Python dictionary format."
-                "4) No need to return any reasoning as this is only for extraction of information."
-                "5) Extracted Properties of all Start date and End date: "
+                # "3) The response should strictly follow the Python dictionary format."
+                # "4) No need to return any reasoning as this is only for extraction of information."
+                "3) Extracted Properties of all Start date and End date: "
                 "* if the month is not stated, assume that start/end date is in the middle of the year. "
                 "* should never include english words such as 'months', 'years', 'days'. "
                 "* Instead, dates should be dates converted to the following format: "
@@ -39,7 +38,7 @@ def extract_information(file_path,job_title):
                     YYYY
                     YYYY-MM or YYYYMM
                     YYYY-MM-DD or YYYYMMDD
-                6) Ensure that for any duration (year) calculation: 
+                4) Ensure that for any duration (year) calculation: 
                 * Any end date that indicates "Present", refers to today's date, which is {current_date}. 
                 * Do not assume the work experiences are continuous without breaks.
                 * Method of duration calculation: Subtract the end date from start date to get the number of months. Finally sum up all relevant durations and convert to years. 
@@ -54,7 +53,7 @@ def extract_information(file_path,job_title):
     loader = PyPDFLoader(file_path)
     documents = loader.load()
 
-    llm = ChatOpenAI(model="gpt-3.5-turbo-0125", temperature=0.3)
+    llm = ChatOpenAI(model="gpt-3.5-turbo-0125", temperature=0.1)
     runnable = prompt | llm.with_structured_output(schema=Candidate)
     result = runnable.invoke({"job_title":job_title,"text": documents,"current_date":datetime.now()})
 
