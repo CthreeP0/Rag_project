@@ -23,18 +23,16 @@ def extract_information(file_path,job_title):
         [
             (
                 "system",
-                "You are an expert extraction algorithm with 20 years experience in the recruiting industry. You will be provided with candidate's resume."
-                "[Instruction] Extract relevant candidate's information mentioned in the following candidate's resume following the predefined properties. "
-                "1) Please provide an accurate answers, no guessing."
-                "2) Please return 'N/A' string for all the information that is not mentioned. Do not return NaN."
-                # "3) The response should strictly follow the Python dictionary format."
-                # "4) No need to return any reasoning as this is only for extraction of information."
-                "3) Extracted Properties of all Start date and End date: "
-                "* if the month is not stated, assume that start/end date is in the middle of the year. "
-                "* should never include english words such as 'months', 'years', 'days'. "
-                "* Instead, dates should be dates converted to the following format: "
-                "* date values assigned are strictly in Python datetime format "
-                """Strict Format of either one: 
+                """You are an expert extraction algorithm with 20 years experience in the recruiting industry. You will be provided with candidate's resume.
+                [Instruction] Extract relevant candidate's information mentioned in the following candidate's resume following the predefined properties.
+                1) Please provide an accurate answers, no guessing.
+                2) Please return 'N/A' string for all the information that is not mentioned. Do not return NaN.
+                3) Extracted Properties of all Start date and End date:
+                * if the month is not stated, assume that start/end date is in the middle of the year.
+                * should never include english words such as 'months', 'years', 'days'. 
+                * Instead, dates should be dates converted to the following format:
+                * date values assigned are strictly in Python datetime format.
+                Strict Format of either one: 
                     YYYY
                     YYYY-MM or YYYYMM
                     YYYY-MM-DD or YYYYMMDD
@@ -42,10 +40,15 @@ def extract_information(file_path,job_title):
                 * Any end date that indicates "Present", refers to today's date, which is {current_date}. 
                 * Do not assume the work experiences are continuous without breaks.
                 * Method of duration calculation: Subtract the end date from start date to get the number of months. Finally sum up all relevant durations and convert to years. 
-                * Triple check your calculations. ","""
+                * Triple check your calculations. ",
+                """
             ),
-            ("human", "Job Title : {job_title}"
-                      "{text}"),
+            ("human", 
+             """[Job Title] 
+             {job_title}
+             [Candidate's Resume]
+             {text}   
+             """),
         ]
     )
 

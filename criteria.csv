@@ -1,12 +1,12 @@
 criteria,details,weightage,selected
-education_background,Computer Science,20,True
-cgpa,3.0,10,True
-technical_skill,"['Python', 'R', 'SQL']",30,True
-technology_programs_tool,"['pandas', 'scikit-learn', 'matplotlib', 'seaborn']",20,True
-total_experience_year,2,10,True
-professional_certificate,['Not Specified'],10,True
-total_similar_experience_year,1,10,True
-language,['English'],10,True
-targeted_employer,Not Specified,10,True
-year_of_graduation,2024,5,True
-expected_salary,80000-100000 MYR,5,True
+education_background,Computer Science,9,True
+cgpa,3.5,8,True
+technical_skill,"['Python', 'R', 'SQL']",9,True
+technology_programs_tool,"['pandas', 'scikit-learn', 'matplotlib', 'seaborn']",8,True
+total_experience_year,2,7,True
+professional_certificate,['Data Science Certification'],6,True
+total_similar_experience_year,1,7,True
+language,['English'],8,True
+targeted_employer,Not Specified,9,True
+year_of_graduation,2024,7,True
+expected_salary,6000 - 8000 MYR,8,True
