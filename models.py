@@ -80,7 +80,7 @@ class Criteria(BaseModel):
         ..., description="Preferred language required for the job. If not specified, suggest it. return the result in comma seperated form."
     )
     targeted_employer: Optional[str] = Field(
-        ..., description="Preferred inclusion or exclusion of candidate's previous company required for the job. If not specified, suggest it. Return them in this format: include(), exclude()"
+        ..., description="Preferred inclusion or exclusion of candidate's previous company required for the job. If not specified, suggest it. You must return them in this format: 'include(), exclude()'. "
     )
     year_of_graduation: Optional[str] = Field(
         ..., description=f"Preferred year of graduation required for the job. If not specified, {datetime.now().year}"
