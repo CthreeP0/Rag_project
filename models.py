@@ -65,19 +65,19 @@ class Criteria(BaseModel):
         ..., description="Minimum threshold of cgpa for the candidate required for the job. If not specified, suggest it."
     )
     technical_skill: Optional[str] = Field(
-        ..., description="Technical skills that are relevant to the job details. If not specified, suggest it based on the job title. return each language as a string in a python list"
+        ..., description="Technical skills that are relevant to the job details. If not specified, suggest it based on the job title. return the result in comma seperated form."
     )
     total_experience_year: Optional[str] = Field(
         ..., description="Minimum/preferred total years of working experience required for the job. If not specified, suggest it based on the applicant category."
     )
     professional_certificate: Optional[str] = Field(
-        ..., description="Preferred professional certifications,licenses or accreditations required for the job. If not specified, suggest it based on the job title. return each language as a string in a python list"
+        ..., description="Preferred professional certifications,licenses or accreditations required for the job. If not specified, suggest it based on the job title. return the result in comma seperated form."
     )
     total_similar_experience_year: Optional[str] = Field(
         ..., description="Minimum/preferred total years of working experience that is related to the job title required for the job. If not specified, suggest it based on the applicant category."
     )
     language: Optional[str] = Field(
-        ..., description="Preferred language required for the job. If not specified, suggest it. return each language as a string in a python list"
+        ..., description="Preferred language required for the job. If not specified, suggest it. return the result in comma seperated form."
     )
     targeted_employer: Optional[str] = Field(
         ..., description="Preferred inclusion or exclusion of candidate's previous company required for the job. If not specified, suggest it. Return them in this format: include(), exclude()"

@@ -265,23 +265,27 @@ class ResumeParser:
                 print ("normalised cgpa:  CPGA not found. Default CGPA = 0.0/4.0")
                 return float("0")
 
+        try:
+            if 'education_background' not in data_dict:
+                print(f"Candidate: {data_dict['name']}\t\t 2. CGPA Score:{out_weighted_cgpa_score}/{weightage}\t C CGPA(normalised): {c_cgpa} VS E: {input_cgpa} \t ")
+                return 0.4 * weightage
+            else: 
+                print ("CGPA method 2: Getting latest available cgpa")
+                data_list = ast.literal_eval(data_dict.education_background)
+                # print(data_list)
+                # print(data_list[0]['cgpa'])
+                if data_list[0]['cgpa'] != 'N/A':
+                    data_list.sort(key=lambda x: int(x['year_of_graduation']), reverse=True)
+                    c_cgpa = get_normalize_cgpa(data_list[0]['cgpa'])
 
-        if 'education_background' not in data_dict:
-            print(f"Candidate: {data_dict['name']}\t\t 2. CGPA Score:{out_weighted_cgpa_score}/{weightage}\t C CGPA(normalised): {c_cgpa} VS E: {input_cgpa} \t ")
-            return 0.4 * weightage
-        else: 
-            print ("CGPA method 2: Getting latest available cgpa")
-            data_list = ast.literal_eval(data_dict.education_background)
-            print(data_list)
-            data_list.sort(key=lambda x: int(x['year_of_graduation']), reverse=True)
-            print(data_list[0]['cgpa'])
-            if data_list[0]['cgpa']  != "N/A" :
-                c_cgpa = get_normalize_cgpa(data_list[0]['cgpa'])
-
-            if float(c_cgpa) >= float(input_cgpa):
-                out_weighted_cgpa_score = 1.0 * weightage
-            else:
-                out_weighted_cgpa_score = 0.4 * weightage
+                if float(c_cgpa) >= float(input_cgpa):
+                    out_weighted_cgpa_score = 1.0 * weightage
+                else:
+                    out_weighted_cgpa_score = 0.4 * weightage
+                print(f"Candidate: {data_dict['name']}\t\t 2. CGPA Score:{out_weighted_cgpa_score}/{weightage}\t C CGPA(normalised): {c_cgpa} VS E: {input_cgpa} \t ")
+        except Exception as e:
+            print(e)
+            out_weighted_cgpa_score = 0.4 * weightage
             print(f"Candidate: {data_dict['name']}\t\t 2. CGPA Score:{out_weighted_cgpa_score}/{weightage}\t C CGPA(normalised): {c_cgpa} VS E: {input_cgpa} \t ")
 
         return out_weighted_cgpa_score
@@ -290,6 +294,7 @@ class ResumeParser:
 
     def evaluate_technical_skill_score(self,data_dict,input,weightage):
         data_dict_lower = [x.lower() for x in data_dict['skill_group']]
+        print("skill groups:" , data_dict_lower)
                 
         #Define embeddings model
         embeddings_model = OpenAIEmbeddings(model='text-embedding-ada-002')
@@ -365,40 +370,6 @@ class ResumeParser:
             out_weighted_score = 0  
         
         return total_experience_gpt4,out_weighted_score
-
-    # def evaluate_technology_programs_tool_score(self,data_dict,input,weightage):
-    #     data_dict_lower = [x.lower() for x in data_dict['technology_programs_tool']]
-                
-    #     #Define embeddings model
-    #     embeddings_model = OpenAIEmbeddings(model='text-embedding-ada-002')
-
-    #     #Embeds both list
-    #     embedding1 = embeddings_model.embed_documents(data_dict_lower) #candidate skill groups
-
-    #     #Calculate the cosine similarity score from embeddings
-    #     similarity_test = cosine_similarity(embedding1,self.job_parser.embedding_tech)
-
-    #     def similarity_range_score(similarity_scores):
-    #         categorical_scores = []
-
-    #         for score in similarity_scores:
-    #             if score >= 0.88:
-    #                 categorical_scores.append(1.0)
-    #             elif score >= 0.85:
-    #                 categorical_scores.append(0.5)
-    #             elif score >= 0.8:
-    #                 categorical_scores.append(0.3)
-    #             else:
-    #                 categorical_scores.append(0.0)
-    #         print(categorical_scores)
-
-    #         return categorical_scores
-
-    #     res = round(np.mean(similarity_range_score(similarity_test.max(axis=0)))*weightage,2)
-        
-    #     print(f"Candidate: {data_dict['name']}\t\t4. Technology Score:{res}/{weightage}\tC similairty score: {res} E: {input} \t ")
-            
-    #     return res
 
 
     def evaluate_total_similar_experience_year_score(self,data_dict, input, weightage):
@@ -933,7 +904,9 @@ class ResumeParser:
         return res_employer,res_employer_score
 
     def evaluate_language_score(self,data_dict, input, weightage):
+        input_language_lower = [language.strip().lower() for language in input.split(",")]
         match_percentage = 0
+        language_score = 0
         try:
             custom_languages = ["Bahasa Melayu", "Bahasa Malaysia", "Malay", "Melayu", "Bahasa"]
             def check_custom_languages(input_list):
@@ -954,13 +927,13 @@ class ResumeParser:
                     languages_str='English'
                     data_dict['language'] = ['English']
             doc1 = nlp(languages_str)
-            doc2 = nlp(input)
+            doc2 = nlp(input_language_lower)
             
             languages1 = set(ent.text.strip() for ent in doc1.ents if ent.label_ == "LANGUAGE")
             languages2 = set(ent.text.strip() for ent in doc2.ents if ent.label_ == "LANGUAGE")
 
             languages1.update(check_custom_languages(languages_str))
-            languages2.update(check_custom_languages(input))
+            languages2.update(check_custom_languages(input_language_lower))
 
             matched_languages = set(l.lower() for l in languages1).intersection(set(l.lower() for l in languages2))
 
@@ -978,7 +951,7 @@ class ResumeParser:
         except Exception as e:
             print("Error on language",e)
             traceback.print_exc()  # This will print the traceback information
-            return data_dict
+            return language_score
 
     def evaluate_expected_salary_score(self,data_dict, input, weightage):
         """
@@ -1021,7 +994,6 @@ class ResumeParser:
         return out_salary_score
 
     def evaluate_professional_certificate_score(self,data_dict, input, weightage):
-
         def detect_match_phrases(resume, match_phrases):
             matches = []
             for certificate in resume:
@@ -1045,7 +1017,7 @@ class ResumeParser:
 
             return score
         
-
+        
         # Read the abbreviation CSV file
         # file_path = os.path.join(os.path.dirname(__file__), 'CVMatching_Prof_Cert_Wikipedia.xlsx')
         file_path = 'CVMatching_Prof_Cert_Wikipedia.xlsx'
@@ -1087,33 +1059,40 @@ class ResumeParser:
         return score
 
     def evaluate_year_of_graduation_score(self,data_dict, input_year, weightage): 
-        out_yr_grad  =  0 
+        out_yr_grad  =  0
 
-        if 'education_background' not in data_dict:
-            print("No educational background provided.")
-            return "No educational background provided.",0
-        else: 
-            # Sort education background by year of graduation once, after preprocessing
-            data_list = ast.literal_eval(data_dict.education_background)
-            print(data_list)
-            data_list.sort(key=lambda x: int(x['year_of_graduation']), reverse=True)
-            # Preprocess and validate year of graduation entries
-            res = ""
-            for edu in data_list:
-                year_of_graduation = str(edu['year_of_graduation'])  # Ensure it's a string for comparison
-                print(year_of_graduation)
-                if not year_of_graduation.isdigit() and year_of_graduation.lower() not in ['present', 'current']:
-                    edu['year_of_graduation'] = 'N/A'
-                elif year_of_graduation.lower() in ['present', 'current']:
-                    edu['year_of_graduation'] = 'Still Studying'
+        try:
 
-                year_of_graduation = str(edu['year_of_graduation']) 
-                res += year_of_graduation + ", "
-                if year_of_graduation == input_year:
-                    out_yr_grad = weightage
+            if 'education_background' not in data_dict:
+                print("No educational background provided.")
+                return "No educational background provided.",0
+            else: 
+                # Sort education background by year of graduation once, after preprocessing
+                data_list = ast.literal_eval(data_dict.education_background)
+                print(data_list)
+                data_list.sort(key=lambda x: int(x['year_of_graduation']) if x['year_of_graduation'] != "N/A" else 0, reverse=True)
+                # Preprocess and validate year of graduation entries
+                res = ""
+                for edu in data_list:
+                    year_of_graduation = str(edu['year_of_graduation'])  # Ensure it's a string for comparison
+                    print(year_of_graduation)
+                    if not year_of_graduation.isdigit() and year_of_graduation.lower() not in ['present', 'current']:
+                        edu['year_of_graduation'] = 'N/A'
+                    elif year_of_graduation.lower() in ['present', 'current']:
+                        edu['year_of_graduation'] = 'Still Studying'
 
-            # Print the result
-            res = res if res else "Not Specified" 
+                    year_of_graduation = str(edu['year_of_graduation']) 
+                    res += year_of_graduation + ", "
+                    if year_of_graduation == input_year:
+                        out_yr_grad = weightage
+
+                # Print the result
+                res = res if res else "Not Specified" 
+                print(f"16. Year of Grad: {out_yr_grad}\t Employer: {input_year},  Candidate: {res}")
+        except Exception as e:
+            print(e)
+            res = "Not Specified"
+            out_yr_grad = 0
             print(f"16. Year of Grad: {out_yr_grad}\t Employer: {input_year},  Candidate: {res}")
 
         return res,out_yr_grad
