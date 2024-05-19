@@ -74,7 +74,7 @@ class Criteria(BaseModel):
         ..., description="Preferred professional certifications,licenses or accreditations required for the job. If not specified, suggest it based on the job title. return the result in comma seperated form."
     )
     total_similar_experience_year: Optional[str] = Field(
-        ..., description="Minimum/preferred total years of working experience that is related to the job title required for the job. If not specified, suggest it based on the applicant category."
+        ..., description="Minimum/preferred total years of working experience that is related to the job title required for the job. If not specified, suggest it based on the applicant category. Return the integer only."
     )
     language: Optional[str] = Field(
         ..., description="Preferred language required for the job. If not specified, suggest it. return the result in comma seperated form."
