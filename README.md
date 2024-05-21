@@ -49,4 +49,3 @@
 
 ---
 
-You can copy and paste this text into a `.docx` document and format it further to suit your needs, such as adding headings, adjusting table formatting, and so on.
