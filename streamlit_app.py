@@ -171,7 +171,7 @@ def main():
                 
 
                 # Display the Excel file in the chat and provide a download link
-                result_df.to_excel('results.xlsx')
+                result_df.to_excel(os.path.join(save_dir, 'results.xlsx'))
                 st.session_state.messages = [{"role": "assistant", "content": f"Resume Parsing is done for all resumes! You may hover to the table below to download the results!","type":'message'}]
                 
                 message = {"role": "assistant", "content": df_showcase_result,"type":'dataframe'}
@@ -183,7 +183,8 @@ def main():
             st.markdown("Please refer to [this link](https://github.com/yejui626/fyp_goo?tab=readme-ov-file#3-what-is-the-format-for-the-evaluating-criteria-details-that-users-should-follow) for the criteria details format.")
 
             # Create DataFrame
-            df = pd.read_csv('criteria.csv')
+            df = pd.read_csv(os.path.join(save_dir, 'criteria.csv'))
+
             edited_df = st.data_editor(df,disabled=['criteria'],key='df')
 
             favorite_command = edited_df.loc[edited_df["weightage"].idxmax()]["criteria"]
@@ -194,10 +195,10 @@ def main():
                  st.session_state["post_evaluation"] = False
                  with st.chat_message("assistant"):
                     with st.spinner("Thinking..."):
-                        edited_df.to_csv('criteria.csv', index=False)
+                        edited_df.to_csv(os.path.join(save_dir, 'criteria.csv'), index=False)
 
-                        data_dict = pd.read_excel('results.xlsx',index_col=0)
-                        criteria = pd.read_csv('criteria.csv',index_col=0)
+                        data_dict = pd.read_excel(os.path.join(save_dir, 'results.xlsx'),index_col=0)
+                        criteria = pd.read_csv(os.path.join(save_dir, 'criteria.csv'),index_col=0)
 
                         # Initialize the JobParser class
                         job_parser = JobParser(job_title, job_description, job_requirement)
@@ -213,7 +214,7 @@ def main():
 
                         # Run the pipeline
                         st.session_state.data_dict_final = evaluate_criteria_pipeline(data_dict, criteria, resume_parser)
-                        st.session_state.data_dict_final.to_excel('post_criteria_evaluation.xlsx', index=False)
+                        st.session_state.data_dict_final.to_excel(os.path.join(save_dir, 'post_criteria_evaluation.xlsx'), index=False)
 
                         df_evaluation_showcase_result = st.session_state.data_dict_final.copy()
                         candidate_dict_evaluation = st.session_state.data_dict_final.to_dict()
