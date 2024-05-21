@@ -20,8 +20,7 @@
 - **Current Location:** The candidate's current location, including country, state, and city.
 - **Education Background:** Details about the candidate's education, including field of study, degree level, CGPA, university name, start date, and graduation year.
 - **Professional Certificates:** Any professional certificates the candidate holds.
-- **Skill Groups:** The different skill sets the candidate possesses.
-- **Technology (Tools, Programs, Systems):** Any technology tools, programs, or systems the candidate has experience with.
+- **Skill Groups:** The different skill sets the candidate possesses, or any technology tools, programs, or systems the candidate has experience with..
 - **Languages:** Languages the candidate can speak or write.
 - **Previous Job Roles:** Information about the candidate's past job roles, including job titles, companies, industries, start and end dates, job locations, and the duration of each job in years.
 
