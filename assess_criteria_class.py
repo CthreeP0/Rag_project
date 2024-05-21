@@ -903,7 +903,7 @@ class ResumeParser:
                 res_employer_score = float(in_weightage_employer)
         return res_employer,res_employer_score
 
-    def check_custom_languages(input_list, custom_languages):
+    def check_custom_languages(self,input_list, custom_languages):
         result = []
         for lang in input_list:
             normalized_lang = lang.strip().lower()

@@ -6,6 +6,6 @@ total_experience_year,1,6,True
 professional_certificate,Data Science Certification,7,True
 total_similar_experience_year,0,5,True
 language,English,6,True
-targeted_employer,"include(), exclude()",5,True
-year_of_graduation,2024,4,True
-expected_salary,Not Specified,3,True
+targeted_employer,"include(), exclude()",4,True
+year_of_graduation,2024,5,True
+expected_salary,"$60,000 - $80,000",8,True

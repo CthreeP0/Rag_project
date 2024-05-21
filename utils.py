@@ -42,8 +42,7 @@ Strict Format of either one:
 * Any end date that indicates "Present", refers to {current_date}. 
 * Method of duration calculation: Subtract the end date from start date to get the number of months. Finally sum up all relevant durations and convert to years. 
 * Triple check your calculations.
-* The result must be in float form.
-* You must encapsulate the value within double quotes.",
+* The result must be in float value and encapsulate the value within double quotes., for example: "1.5".
 """
             ),
             ("human", 
