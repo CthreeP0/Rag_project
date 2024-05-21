@@ -66,7 +66,7 @@ class JobParser:
         self.embedding_skill_groups = embeddings_model.embed_documents(jd_skills_lower + result_list_skill_lower)
 
         # Print the embeddings (or store them as needed)
-        print("Embeddings for JD skills and result list skills:", self.embedding_skill_groups)
+        # print("Embeddings for JD skills and result list skills:", self.embedding_skill_groups)
 
         return self.embedding_skill_groups
     
@@ -903,55 +903,81 @@ class ResumeParser:
                 res_employer_score = float(in_weightage_employer)
         return res_employer,res_employer_score
 
+    def check_custom_languages(input_list, custom_languages):
+        result = []
+        for lang in input_list:
+            normalized_lang = lang.strip().lower()
+            for key, value in custom_languages.items():
+                if key.lower() in normalized_lang:
+                    normalized_lang = value
+                    break
+            result.append(normalized_lang.capitalize())
+        return result
+
+    def normalize_languages(self,input_list):
+        # Define mappings for custom languages to a standardized form
+        custom_languages_malay = {
+            "bahasa melayu": "malay",
+            "bahasa malaysia": "malay",
+            "malay": "malay",
+            "melayu": "malay",
+            "bahasa": "malay",
+        }
+
+        custom_languages_mandarin = {
+            "chinese": "mandarin",
+            "huayu": "mandarin",
+            "mandarin": "mandarin",
+        }
+        # Normalize Malay languages
+        input_list = self.check_custom_languages(input_list, custom_languages_malay)
+        # Normalize Mandarin languages
+        input_list = self.check_custom_languages(input_list, custom_languages_mandarin)
+        return input_list
+
+
     def evaluate_language_score(self,data_dict, input, weightage):
-        input_language_lower = [language.strip().lower() for language in input.split(",")]
+        print(data_dict['language'])
         match_percentage = 0
-        language_score = 0
         try:
-            custom_languages = ["Bahasa Melayu", "Bahasa Malaysia", "Malay", "Melayu", "Bahasa"]
-            def check_custom_languages(input_list):
-                return set(lang.lower()for lang in custom_languages if lang.lower() in input_list)
-            
-            languages_str = ', '.join(data_dict['language'])
+            candidate_list = data_dict['language']
+            print(candidate_list)
+            input_list = [lang.strip() for lang in input.split(",")]
 
             nlp = spacy.load('en_core_web_md')
-            
-            def get_lang_detector(nlp, name):
-                return LanguageDetector()
 
-            if languages_str == "N, /, A" or languages_str == "N/A":
-                Language.factory("language_detector", func=get_lang_detector)
-                nlp.add_pipe('language_detector', last=True)
-                doc1 = nlp(str(data_dict))
-                if doc1._.language['language']=='en':
-                    languages_str='English'
-                    data_dict['language'] = ['English']
-            doc1 = nlp(languages_str)
-            doc2 = nlp(input_language_lower)
+            # Normalize custom languages for both Malay and Mandarin
+            candidate_list = self.normalize_languages(list(candidate_list))
+            input_list = self.normalize_languages(list(input_list))
+
+            doc1 = nlp(str(candidate_list))
+            doc2 = nlp(str(input_list))
             
             languages1 = set(ent.text.strip() for ent in doc1.ents if ent.label_ == "LANGUAGE")
             languages2 = set(ent.text.strip() for ent in doc2.ents if ent.label_ == "LANGUAGE")
 
-            languages1.update(check_custom_languages(languages_str))
-            languages2.update(check_custom_languages(input_language_lower))
+            print("languages1", languages1)
+            print("languages2", languages2)
 
-            matched_languages = set(l.lower() for l in languages1).intersection(set(l.lower() for l in languages2))
+            matched_languages = set(lang.lower() for lang in languages1).intersection(set(lang.lower() for lang in languages2))
 
             # Calculate the percentage of matches
-            if languages1:
+            if languages2:
                 match_percentage = len(matched_languages) / len(languages2) * 100
             else:
                 match_percentage = 0
-            language_score = round(match_percentage/100*weightage)
-            print("Matched Languages: ",matched_languages)
-            print (f"Candidate: {data_dict['name']}\t\t 14. Language Score: {language_score}/{weightage}\t C:{languages1} {languages_str}, E: {input} \n")
+            
+            language_score = round(match_percentage / 100 * weightage)
+            print("Matched Languages: ", matched_languages)
+            print(f"Candidate: {data_dict['name']}\t\t 14. Language Score: {language_score}/{weightage}\t C:{languages1} {candidate_list}, E: {input} \n")
             
             return language_score
             
         except Exception as e:
-            print("Error on language",e)
+            print("Error on language", e)
             traceback.print_exc()  # This will print the traceback information
-            return language_score
+            return 0
+        
 
     def evaluate_expected_salary_score(self,data_dict, input, weightage):
         """
