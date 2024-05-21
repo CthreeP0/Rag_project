@@ -89,8 +89,10 @@ def main():
     st.title("Generative AI Resume Parser 💬🦙")
     st.info("Fill in this form before you start!", icon="📃")
 
-    with st.form("my_form",clear_on_submit=False,border=True):
+    if "batch_token" not in st.session_state.keys(): # Initialize the chat engine
         st.session_state.batch_token = "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(12))
+
+    with st.form("my_form",clear_on_submit=False,border=True):
         # st.title('Resume Parser Form')
         job_title = st.text_input(label=":rainbow[Job Title]", value="", on_change=None, placeholder="Insert your job title here", label_visibility="visible")
         job_description = st.text_area(label=":rainbow[Job Description]", value="", on_change=None, placeholder="Insert your job description here", label_visibility="visible")
