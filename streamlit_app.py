@@ -18,6 +18,53 @@ os.environ["LANGCHAIN_PROJECT"] = f"FYP-Goo"
 os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGCHAIN_API_KEY"] = os.environ.get('LANGCHAIN_API_KEY')
 
+def format_info_field(extracted_info_dict, field_name):
+    try:
+        formatted_entries = []
+        for i, entry in enumerate(extracted_info_dict.get(field_name, {}), start=1):
+            output_string = f"{i}. "
+            for key, value in entry.items():
+                output_string += f"{key}: {value} | "  # Append key-value pairs
+            formatted_entries.append(output_string)
+        return '\n'.join(formatted_entries)
+    except AttributeError:
+        return ''
+    
+def evaluate_criteria_pipeline(data_dict, criteria_df, resume_parser):
+    total_score = 0
+    data_dict['previous_job_roles'] = data_dict['previous_job_roles'].apply(lambda x: json.loads(x.replace("'", '"')))
+    data_dict['current_location'] = data_dict['current_location'].apply(lambda x: json.loads(x.replace("'", '"')))
+    data_dict['language'] = data_dict['language'].apply(lambda x: json.loads(x.replace("'", '"')))
+    data_dict['professional_certificate'] = data_dict['professional_certificate'].apply(lambda x: json.loads(x.replace("'", '"')))
+    data_dict['skill_group'] = data_dict['skill_group'].apply(lambda x: json.loads(x.replace("'", '"')))
+
+    for index, row in criteria_df.iterrows():
+        details = row['details']
+        weightage = row['weightage']
+        selected = row['selected']
+        
+        if selected:
+            function_name = f"evaluate_{index}_score"
+            function = getattr(resume_parser, function_name)
+            
+            if index in ["total_experience_year", "total_similar_experience_year", "year_of_graduation", "targeted_employer"]:
+                # Functions that return two values
+                data_dict[[f"{index}", f"{index}_score"]] = data_dict.apply(lambda row: pd.Series(function(row, details, weightage)), axis=1)
+                total_score += data_dict[f"{index}_score"]
+            else:
+                # Functions that return one value
+                data_dict[f"{index}_score"] = data_dict.apply(lambda row: function(row, details, weightage), axis=1)
+                total_score += data_dict[f"{index}_score"]
+
+    # Add the gpt_recommendation_summary step
+    data_dict['gpt_recommendation_summary'] = data_dict.apply(lambda row: resume_parser.gpt_recommendation_summary(row), axis=1)
+    data_dict['total_score'] = total_score
+
+    # Sort data_dict by total_score in descending order
+    data_dict = data_dict.sort_values(by='total_score', ascending=False).reset_index(drop=True)
+    
+    return data_dict
+
 # Define your Streamlit app
 def main():
     st.set_page_config(page_title="Resume Parser", page_icon="🦙", layout="centered", initial_sidebar_state="auto", menu_items=None)
@@ -59,7 +106,10 @@ def main():
         # Every form must have a submit button.
         submitted = st.form_submit_button("Submit")
 
-    predefined_prompt_selected = pills("Q&A", ["What is the purpose of the Resume Parser tool?", "What are the expected outputs for the extracted results?", "What is the format for the evaluating criteria details that users should follow?"], ["🍀", "🎈", "🌈"],clearable=True,index = None)
+    predefined_prompt_selected = pills("Q&A", ["What is the purpose of the Resume Parser tool?", 
+                                               "What are the expected outputs for the extracted results?", 
+                                               "What is the format for the evaluating criteria details that users should follow?"], 
+                                               ["🍀", "🎈", "🌈"],clearable=True,index = None)
 
     if predefined_prompt_selected:
         prompt = predefined_prompt_selected
@@ -75,7 +125,6 @@ def main():
         result_df = pd.DataFrame()
         df = define_criteria(job_title,job_description,job_requirement,applicant_category)
         
-
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
 
@@ -91,19 +140,6 @@ def main():
                     df = pd.DataFrame([candidate_dict])
                     # Append the result DataFrame to the main DataFrame
                     result_df = pd.concat([result_df, df], ignore_index=True)
-                    
-                def format_info_field(extracted_info_dict, field_name):
-                    try:
-                        formatted_entries = []
-                        for i, entry in enumerate(extracted_info_dict.get(field_name, {}), start=1):
-                            output_string = f"{i}. "
-                            for key, value in entry.items():
-                                output_string += f"{key}: {value} | "  # Append key-value pairs
-                            formatted_entries.append(output_string)
-                        return '\n'.join(formatted_entries)
-                    except AttributeError:
-                        return ''
-                
                 
                 df_showcase_result = result_df.copy()    
                 single_row_previous_jobs = format_info_field(candidate_dict, "previous_job_roles")
@@ -138,41 +174,6 @@ def main():
                  with st.chat_message("assistant"):
                     with st.spinner("Thinking..."):
                         edited_df.to_csv('criteria.csv', index=False)
-
-                        def evaluate_criteria_pipeline(data_dict, criteria_df, resume_parser):
-                            total_score = 0
-                            data_dict['previous_job_roles'] = data_dict['previous_job_roles'].apply(lambda x: json.loads(x.replace("'", '"')))
-                            data_dict['current_location'] = data_dict['current_location'].apply(lambda x: json.loads(x.replace("'", '"')))
-                            data_dict['language'] = data_dict['language'].apply(lambda x: json.loads(x.replace("'", '"')))
-                            data_dict['professional_certificate'] = data_dict['professional_certificate'].apply(lambda x: json.loads(x.replace("'", '"')))
-                            data_dict['skill_group'] = data_dict['skill_group'].apply(lambda x: json.loads(x.replace("'", '"')))
-
-                            for index, row in criteria_df.iterrows():
-                                details = row['details']
-                                weightage = row['weightage']
-                                selected = row['selected']
-                                
-                                if selected:
-                                    function_name = f"evaluate_{index}_score"
-                                    function = getattr(resume_parser, function_name)
-                                    
-                                    if index in ["total_experience_year", "total_similar_experience_year", "year_of_graduation", "targeted_employer"]:
-                                        # Functions that return two values
-                                        data_dict[[f"{index}", f"{index}_score"]] = data_dict.apply(lambda row: pd.Series(function(row, details, weightage)), axis=1)
-                                        total_score += data_dict[f"{index}_score"]
-                                    else:
-                                        # Functions that return one value
-                                        data_dict[f"{index}_score"] = data_dict.apply(lambda row: function(row, details, weightage), axis=1)
-                                        total_score += data_dict[f"{index}_score"]
-
-                            # Add the gpt_recommendation_summary step
-                            data_dict['gpt_recommendation_summary'] = data_dict.apply(lambda row: resume_parser.gpt_recommendation_summary(row), axis=1)
-                            data_dict['total_score'] = total_score
-
-                            # Sort data_dict by total_score in descending order
-                            data_dict = data_dict.sort_values(by='total_score', ascending=False).reset_index(drop=True)
-                            
-                            return data_dict
 
                         data_dict = pd.read_excel('results.xlsx',index_col=0)
                         criteria = pd.read_csv('criteria.csv',index_col=0)

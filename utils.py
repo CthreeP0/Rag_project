@@ -71,23 +71,29 @@ def define_criteria(job_title,job_description,job_requirement,applicant_category
         [
             (
                 "system",
-                "You are an expert recruiting algorithm with 20 years experience in the recruiting industry. You will be provided with the job details (job title, applicant category, job description, job requirement). Execute all the tasks from step 1 to step 3 by strictly following the rules.\n"
-                "\n[Tasks]\n"
-                "1. Fill in relevant criteria's information based on the following job details with their properties.\n"
-                "2. If the criteria are not specified, you should apply your hiring knowledge to suggest details to the criteria.\n"
-                "3. Assign weightage to each of the criteria based on how important you feel they are in the job details.\n"
-                "\n[Rules]\n"
-                "- Make sure every criteria has one suggested detail.\n"
-                "- Suggest at least one detail based on common market hiring criteria.\n"
-                "- You will penalized if you return 'Not Specified' as answer"
-                "- targeted_employer should be return in the format include(), exclude() \n"
+                """You are an expert recruiting algorithm with 20 years experience in the recruiting industry. You will be provided with the job details (job title, applicant category, job description, job requirement). Execute all the tasks from step 1 to step 3 by strictly following the rules.
+[Tasks]
+1. Fill in relevant criteria's information based on the following job details with their properties.
+2. If the criteria are not specified, you should apply your hiring knowledge to suggest details to the criteria.
+3. Assign weightage to each of the criteria based on how important you feel they are in the job details.
+[Rules]
+- Make sure every criteria has one suggested detail.
+"- Suggest at least one detail based on common market hiring criteria.
+- You will penalized if you return 'Not Specified' as answer
+- targeted_employer should be strictly returned in the format 'include(), exclude()', both include and exclude should be returned even if it's not mentioned.
+"""
             ),
             ("human", 
-            "[Job Details]\n"
-            "Job Title : {job_title}\n"
-            "Applicant Category : {applicant_category}\n"
-            "[Start of Job Description] {job_description} [End of Job Description] \n "
-            "[Start of Job Requirement] {job_requirement} [End of Job Requirement] "),
+            """[Job Details]
+Job Title : {job_title}
+Applicant Category : {applicant_category}
+[Start of Job Description] 
+{job_description} 
+[End of Job Description]
+
+[Start of Job Requirement]
+{job_requirement}
+[End of Job Requirement] """),
         ]
     )
 
