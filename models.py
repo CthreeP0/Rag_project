@@ -80,14 +80,14 @@ class Criteria(BaseModel):
         ..., description="Preferred language required for the job. If not specified, suggest it. return the result in comma seperated form."
     )
     targeted_employer: Optional[str] = Field(
-        ..., description="Preferred inclusion or exclusion of candidate's previous company required for the job. **You must return them in this format: 'include(), exclude()' ** "
-        pattern = '^(include\((.*?)\)\s*,\s*exclude\((.*?)\)\s*)+$'
+        ..., description="Preferred inclusion or exclusion of candidate's previous company required for the job. **You must return them in this format: 'include(), exclude()' ** ",
+        pattern = '^(include\((.*?)\)\s*,\s*exclude\((.*?)\)\s*)+$',
     )
     year_of_graduation: Optional[str] = Field(
         ..., description=f"Preferred year of graduation required for the job. If not specified, {datetime.now().year}"
     )
     expected_salary: Optional[str] = Field(
-        ..., description="Preferred salary range required for the job. If not specified, suggest the market range in Ringgit Malaysia based on the job title for the applicant category."
+        ..., description="Preferred salary range required for the job. If not specified, search on glassdoor for the median salary range for the Data Scientist role in malaysia"
     )
 
 

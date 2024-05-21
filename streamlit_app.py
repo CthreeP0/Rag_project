@@ -147,6 +147,9 @@ def main():
                 
                 single_row_edu_background = format_info_field(candidate_dict, "education_background")
                 df_showcase_result["education_background"] = single_row_edu_background
+
+                single_row_location = format_info_field(candidate_dict, "current_location")
+                df_showcase_result["current_location"] = single_row_location
                 
 
                 # Display the Excel file in the chat and provide a download link
@@ -194,9 +197,22 @@ def main():
                         st.session_state.data_dict_final = evaluate_criteria_pipeline(data_dict, criteria, resume_parser)
                         st.session_state.data_dict_final.to_excel('post_criteria_evaluation.xlsx', index=False)
 
+                        df_evaluation_showcase_result = st.session_state.data_dict_final.copy()
+                        candidate_dict_evaluation = st.session_state.data_dict_final.dict()
+
+                        single_row_previous_jobs = format_info_field(candidate_dict_evaluation, "previous_job_roles")
+                        df_evaluation_showcase_result["previous_job_roles"] = single_row_previous_jobs
+                        
+                        single_row_edu_background = format_info_field(candidate_dict_evaluation, "education_background")
+                        df_evaluation_showcase_result["education_background"] = single_row_edu_background
+
+                        single_row_location = format_info_field(candidate_dict_evaluation, "current_location")
+                        df_evaluation_showcase_result["current_location"] = single_row_location
+
+
                         st.session_state["post_evaluation"] = True
                         st.session_state.messages.append({"role": "assistant", "content": "You can now start chatting with the results!","type":"message"})
-                        st.session_state.messages.append({"role": "assistant", "content": st.session_state.data_dict_final ,"type":"message"})
+                        st.session_state.messages.append({"role": "assistant", "content": df_evaluation_showcase_result ,"type":"message"})
                         
             st.markdown(f"Criteria : **{favorite_command}** has the highest weightage 🎈")
             st.markdown(f"Selected Criterias : **{selected_criterias}** 🎈")
@@ -211,21 +227,16 @@ def main():
 
 
     if "post_evaluation" in st.session_state.keys():
-        st.write(st.session_state.data_dict_final)
         post_evaluation_chat = PandasChat()
         st.session_state.chat_engine = post_evaluation_chat
-        
-        
         
     if "chat_engine" not in st.session_state.keys(): # Initialize the chat engine
         default_chat = DefaultChat()
         st.session_state.chat_engine = default_chat 
 
-
     # Initialize the chat messages history
     if "messages" not in st.session_state.keys():
         st.session_state.messages = [{"role": "assistant", "content": "Fill in this form before you start!","type":"message"}]
-
 
     if prompt := st.chat_input("Your question"): # Prompt for user input and save to chat history
         st.session_state.messages.append({"role": "user", "content": prompt,"type":"prompt"})

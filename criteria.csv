@@ -1,11 +1,11 @@
 criteria,details,weightage,selected
 education_background,Computer Science,8,True
 cgpa,3.0,7,True
-technical_skill,"SQL, Python, ETL",9,True
-total_experience_year,1 year,6,True
-professional_certificate,AWS Certified Big Data - Specialty,8,True
-total_similar_experience_year,0 years,5,True
-language,English,7,True
-targeted_employer,"include(), exclude(Amazon)",6,True
-year_of_graduation,2024,5,True
-expected_salary,4000 - 6000 MYR,7,True
+technical_skill,"Python, R, SQL",9,True
+total_experience_year,1,6,True
+professional_certificate,Data Science Certification,8,True
+total_similar_experience_year,1,7,True
+language,English,5,True
+targeted_employer,"include(), exclude()",8,True
+year_of_graduation,2024,6,True
+expected_salary,5000-7000 MYR,7,True
