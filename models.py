@@ -87,7 +87,7 @@ class Criteria(BaseModel):
         ..., description=f"Preferred year of graduation required for the job. If not specified, {datetime.now().year}"
     )
     expected_salary: Optional[str] = Field(
-        ..., description="Preferred salary range required for the job. If not specified, search on glassdoor for the median salary range for the Data Scientist role in malaysia"
+        ..., description="Preferred salary range required for the job. If not specified, search on glassdoor for the median salary range for the job role in Malaysia (RM)"
     )
 
 

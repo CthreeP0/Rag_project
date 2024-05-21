@@ -139,12 +139,11 @@ def main():
 
         
     if submitted:
-        st.session_state["button_pressed"] = True
-        result_df = pd.DataFrame()
-        df = define_criteria(job_title,job_description,job_requirement,applicant_category)
-        
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
+                st.session_state["button_pressed"] = True
+                result_df = pd.DataFrame()
+                df = define_criteria(save_dir,job_title,job_description,job_requirement,applicant_category)
 
                 doc2pdf(save_dir)
                 # Get a list of PDF files in the directory

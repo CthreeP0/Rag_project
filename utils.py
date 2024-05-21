@@ -11,6 +11,7 @@ from datetime import datetime
 import base64
 from models import Candidate,Job
 import pandas as pd
+import os
 
 
 
@@ -66,7 +67,7 @@ Strict Format of either one:
     return result
 
 
-def define_criteria(job_title,job_description,job_requirement,applicant_category):
+def define_criteria(save_dir,job_title,job_description,job_requirement,applicant_category):
     prompt = ChatPromptTemplate.from_messages(
         [
             (
