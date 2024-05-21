@@ -30,8 +30,26 @@ def format_info_field(extracted_info_dict, field_name):
     except AttributeError:
         return ''
     
+def format_info_field_evaluation(extracted_info_dict, field_name):
+    try:
+        formatted_entries = []
+        entries = extracted_info_dict.get(field_name, [])
+        if not entries or not isinstance(entries[0], list) or not entries[0]:
+            return ''
+
+        for i, entry in enumerate(entries[0], start=1):
+            output_string = f"{i}. "
+            for key, value in entry.items():
+                output_string += f"{key}: {value} | "  # Append key-value pairs
+            formatted_entries.append(output_string.rstrip(' | '))  # Remove trailing ' | '
+        return '\n'.join(formatted_entries)
+    except AttributeError:
+        return ''
+    
 def evaluate_criteria_pipeline(data_dict, criteria_df, resume_parser):
     total_score = 0
+    data_dict['education_background'] = data_dict['education_background'].apply(lambda x: x.replace('\'s ', ' '))
+    data_dict['education_background'] = data_dict['education_background'].apply(lambda x: json.loads(x.replace("'", '"')))
     data_dict['previous_job_roles'] = data_dict['previous_job_roles'].apply(lambda x: json.loads(x.replace("'", '"')))
     data_dict['current_location'] = data_dict['current_location'].apply(lambda x: json.loads(x.replace("'", '"')))
     data_dict['language'] = data_dict['language'].apply(lambda x: json.loads(x.replace("'", '"')))
@@ -198,15 +216,15 @@ def main():
                         st.session_state.data_dict_final.to_excel('post_criteria_evaluation.xlsx', index=False)
 
                         df_evaluation_showcase_result = st.session_state.data_dict_final.copy()
-                        candidate_dict_evaluation = st.session_state.data_dict_final.dict()
+                        candidate_dict_evaluation = st.session_state.data_dict_final.to_dict()
 
-                        single_row_previous_jobs = format_info_field(candidate_dict_evaluation, "previous_job_roles")
+                        single_row_previous_jobs = format_info_field_evaluation(candidate_dict_evaluation, "previous_job_roles")
                         df_evaluation_showcase_result["previous_job_roles"] = single_row_previous_jobs
                         
-                        single_row_edu_background = format_info_field(candidate_dict_evaluation, "education_background")
+                        single_row_edu_background = format_info_field_evaluation(candidate_dict_evaluation, "education_background")
                         df_evaluation_showcase_result["education_background"] = single_row_edu_background
 
-                        single_row_location = format_info_field(candidate_dict_evaluation, "current_location")
+                        single_row_location = format_info_field_evaluation(candidate_dict_evaluation, "current_location")
                         df_evaluation_showcase_result["current_location"] = single_row_location
 
 
