@@ -54,8 +54,8 @@ Strict Format of either one:
         ]
     )
 
-    #loader = PyPDFLoader(file_path, extract_images=True)
-    loader = PyPDFLoader(file_path)
+    loader = PyPDFLoader(file_path, extract_images=True)
+    # loader = PyPDFLoader(file_path)
     documents = loader.load()
 
     llm = ChatOpenAI(model="gpt-3.5-turbo-0125", temperature=0.1)
@@ -114,7 +114,7 @@ Applicant Category : {applicant_category}
     df.index = [x for x in result.criteria[0].__fields__]
     df.index.name='criteria'
 
-    df.to_csv('criteria.csv')
+    df.to_csv(os.path.join(save_dir, 'criteria.csv'))
 
     return df
 
