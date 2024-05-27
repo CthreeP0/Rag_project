@@ -122,6 +122,8 @@ venv.bak/
 langchain/
 fyp/
 uploaded_files/
+test/
+
 
 # Spyder project settings
 .spyderproject

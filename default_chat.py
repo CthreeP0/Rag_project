@@ -10,16 +10,14 @@ import streamlit as st
 
 class DefaultChat:
     def chat(self, user_question):
-        raw_documents = TextLoader('README.md').load()
-
-        text_splitter = CharacterTextSplitter(chunk_size=3000, chunk_overlap=0)
-        documents = text_splitter.split_documents(raw_documents)
         llm = ChatOpenAI(model="gpt-3.5-turbo-0125", temperature=0.1)
-        db = FAISS.from_documents(documents, OpenAIEmbeddings())
+        embeddings = OpenAIEmbeddings()
+        new_db = FAISS.load_local(folder_path='vector_stores',index_name = "faiss_index_default", embeddings=embeddings,allow_dangerous_deserialization=True)
 
-        retriever = db.as_retriever()
+        retriever = new_db.as_retriever()
         template = """
-        You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. If you don't know the answer, just say that you don't know.
+        You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. The provided context is labelled with **Question** and **Answer**. Return everything under **Answer**.
+        If you don't know the answer, just say that you don't know.
 
         Question: {question} 
 

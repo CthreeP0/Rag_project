@@ -7,15 +7,6 @@ from datetime import datetime
 class Candidate(BaseModel):
     """Information about a candidate from his/her resume."""
 
-    # ^ Doc-string for the entity Person.
-    # This doc-string is sent to the LLM as the description of the schema Person,
-    # and it can help to improve extraction results.
-
-    # Note that:
-    # 1. Each field is an `optional` -- this allows the model to decline to extract it!
-    # 2. Each field has a `description` -- this description is used by the LLM.
-    # Having a good description can help improve extraction results.
-
     name: Optional[str] = Field(..., description="The name of the candidate")
     phone_number: Optional[str] = Field(
         ..., description="The phone number of the candidate"
@@ -24,13 +15,7 @@ class Candidate(BaseModel):
         ..., description="The email of the candidate"
     )
     local: Optional[str] = Field(
-        ..., description="Is the candidate Malaysian(Yes or No)?"
-    )
-    expected_salary: Optional[str] = Field(
-        ..., description="Candidate's expected salary in RM if known. (If the currency is Ringgit Malaysia, assign the numerical value or range values only Eg:'3000-3100'. If in other currency, assign alongside currency). Return 'N/A' if not found."
-    )
-    previous_job_roles: Optional[List] = Field(
-        ..., description="Every single one of the candidate's (job_title, job_company, Industries (strictly classify according to to The International Labour Organization), start_date and end_date (only assign date time format if available. Do not assign duration), job_location, job_duration (return the job_duration in years and in string format), return in a python dict format. Assign N/A to the values of the key if not mentioned."
+        ..., description="Is the candidate Malaysian(Yes or No)? Identify it based on the country code of the phone number, address, and education background."
     )
     current_location: Optional[List] = Field(
         ..., 
@@ -42,6 +27,13 @@ class Candidate(BaseModel):
         description="Every single candidate's education background. (field_of_study, level (always expand to long forms), cgpa (Example: 3.5/4.0), university, start_date, year_of_graduation (Year in 4-digits only, remove month). Return in key-value pairs.",
         pattern = '\{\s*"field_of_study"\s*:\s*"[^"]*"\s*,\s*"level"\s*:\s*"[^"]*"\s*,\s*"cgpa"\s*:\s*"[^"]*"\s*,\s*"university"\s*:\s*"[^"]*"\s*,\s*"start_date"\s*:\s*"\d{4}"\s*,\s*"year_of_graduation"\s*:\s*"\d{4}"\s*\}'
     )
+    expected_salary: Optional[str] = Field(
+        ..., description="Candidate's expected salary in RM if known. (If the currency is Ringgit Malaysia, assign the numerical value or range values only Eg:'3000-3100'. If in other currency, assign alongside currency). Return 'N/A' if not found."
+    )
+    previous_job_roles: Optional[List] = Field(
+        ..., description="Every single one of the candidate's (job_title, job_company, Industries (strictly classify according to to The International Labour Organization), start_date and end_date (only assign date time format if available. Do not assign duration), job_location, job_duration (return the job_duration in years and in string format), return in a python dict format. Assign N/A to the values of the key if not mentioned."
+    )
+
     professional_certificate: Optional[List] = Field(
         ..., description="Candidate's professional certificates stated in the resume, return each certificate as a string in a python list. Return 'N/A' if not found."
     )

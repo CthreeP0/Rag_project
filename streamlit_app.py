@@ -11,6 +11,7 @@ import json
 from default_chat import DefaultChat
 from pandas_chat import PandasChat
 from streamlit_pills import pills
+import re
 
 load_dotenv(".env")
 os.environ["LANGCHAIN_TRACING_V2"] = "true"
@@ -46,9 +47,13 @@ def format_info_field_evaluation(extracted_info_dict, field_name):
     except AttributeError:
         return ''
     
+def replace_degrees(text):
+    return re.sub(r"\b(Bachelor's|Master's)\b", lambda m: m.group(0).replace("'", ""), text)
+
+
 def evaluate_criteria_pipeline(data_dict, criteria_df, resume_parser):
     total_score = 0
-    data_dict['education_background'] = data_dict['education_background'].apply(lambda x: x.replace('\'s ', ' '))
+    data_dict['education_background'] = data_dict['education_background'].apply(replace_degrees)
     data_dict['education_background'] = data_dict['education_background'].apply(lambda x: json.loads(x.replace("'", '"')))
     data_dict['previous_job_roles'] = data_dict['previous_job_roles'].apply(lambda x: json.loads(x.replace("'", '"')))
     data_dict['current_location'] = data_dict['current_location'].apply(lambda x: json.loads(x.replace("'", '"')))
