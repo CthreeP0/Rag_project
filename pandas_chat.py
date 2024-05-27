@@ -22,7 +22,7 @@ class PandasChat:
             self.df,
             verbose=True,
             max_execution_time=10,
-            max_iterations=3,
+            max_iterations=2,
             agent_type=AgentType.OPENAI_FUNCTIONS,
         )
         self.agent_with_chat_history = RunnableWithMessageHistory(
