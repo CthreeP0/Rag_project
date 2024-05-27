@@ -1,5 +1,5 @@
 import streamlit as st
-from langchain_openai import OpenAIEmbeddings
+from langchain_openai import OpenAIEmbeddings,ChatOpenAI
 import os
 from dotenv import load_dotenv
 from utils import extract_information,define_criteria
@@ -10,6 +10,7 @@ from assess_criteria_class import JobParser, ResumeParser
 import json
 from default_chat import DefaultChat
 from pandas_chat import PandasChat
+from langchain.agents import AgentType, Tool, initialize_agent
 from streamlit_pills import pills
 import re
 
@@ -18,6 +19,7 @@ os.environ["LANGCHAIN_TRACING_V2"] = "true"
 os.environ["LANGCHAIN_PROJECT"] = f"FYP-Goo"
 os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGCHAIN_API_KEY"] = os.environ.get('LANGCHAIN_API_KEY')
+llm = ChatOpenAI(model="gpt-3.5-turbo-0125", temperature=0)
 
 def format_info_field(extracted_info_dict, field_name):
     try:
@@ -250,14 +252,29 @@ def main():
                 st.session_state.clear()
                 print("session state after clearing",st.session_state)
 
-
-    if "post_evaluation" in st.session_state.keys():
-        post_evaluation_chat = PandasChat()
-        st.session_state.chat_engine = post_evaluation_chat
-        
     if "chat_engine" not in st.session_state.keys(): # Initialize the chat engine
         default_chat = DefaultChat()
         st.session_state.chat_engine = default_chat 
+
+    if "post_evaluation" in st.session_state.keys():
+        post_evaluation_chat = PandasChat(sav_dir=save_dir,batch_token=st.session_state.batch_token)
+        tools = [
+            Tool(
+                name="Resume Evaluation Results DataFrame QA System",
+                func=post_evaluation_chat.run,
+                description="useful for when you need to answer questions about the information of the candidates or evaluation results dataframe. Input should be a fully formed question.",
+            ),
+            Tool(
+                name="Resume Parser Tool QA System",
+                func=default_chat.run,
+                description="useful for when you need to answer questions about the resume parser tool itself. Input should be a fully formed question.",
+            ),
+        ]
+        agent = initialize_agent(
+            tools, llm, agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION, verbose=True
+        )
+        st.session_state.chat_engine = agent 
+        
 
     # Initialize the chat messages history
     if "messages" not in st.session_state.keys():
@@ -274,7 +291,7 @@ def main():
     if st.session_state.messages[-1]["role"] != "assistant":
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
-                response = st.session_state.chat_engine.chat(prompt)
+                response = st.session_state.chat_engine.run(prompt)
                 st.session_state.messages.append({"role": "assistant", "content": response,"type":"message"}) # Add response to message history
 
 if __name__ == "__main__":
