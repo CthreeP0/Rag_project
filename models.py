@@ -35,13 +35,13 @@ class Candidate(BaseModel):
     )
 
     professional_certificate: Optional[List] = Field(
-        ..., description="Candidate's professional certificates stated in the resume, return each certificate as a string in a python list. Return 'N/A' if not found."
+        ..., description="Candidate's professional certificates stated in the resume, return each certificate as a string in a python list. Return ['N/A'] if not found."
     )
     skill_group: Optional[List] = Field(
-        ..., description="Every single candidate's skill groups, Technology (Tools, Program, System) stated in the resume, return each skills/ technology as a string in a python list. Return 'N/A' if not found."
+        ..., description="Every single candidate's skill groups, Technology (Tools, Program, System) stated in the resume, return each skills/ technology as a string in a python list. Return ['N/A'] if not found."
     )
     language: Optional[List] = Field(
-        ..., description="Languages that is stated in the resume, return each language as a string in a python list. Return 'N/A' if not found."
+        ..., description="Languages that is stated in the resume, return each language as a string in a python list. Return ['N/A'] if not found."
     )
 
 

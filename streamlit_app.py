@@ -33,21 +33,21 @@ def format_info_field(extracted_info_dict, field_name):
     except AttributeError:
         return ''
     
-def format_info_field_evaluation(extracted_info_dict, field_name):
+# Define the function
+def format_info_field_evaluation(entries):
     try:
         formatted_entries = []
-        entries = extracted_info_dict.get(field_name, [])
-        if not entries or not isinstance(entries[0], list) or not entries[0]:
-            return ''
+        if not entries or not isinstance(entries, list) or not entries:
+            return entries
 
-        for i, entry in enumerate(entries[0], start=1):
+        for i, entry in enumerate(entries, start=1):
             output_string = f"{i}. "
             for key, value in entry.items():
                 output_string += f"{key}: {value} | "  # Append key-value pairs
             formatted_entries.append(output_string.rstrip(' | '))  # Remove trailing ' | '
         return '\n'.join(formatted_entries)
     except AttributeError:
-        return ''
+        return entries
     
 def replace_degrees(text):
     return re.sub(r"\b(Bachelor's|Master's)\b", lambda m: m.group(0).replace("'", ""), text)
@@ -143,7 +143,7 @@ def main():
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
                 st.session_state.messages.append({"role": "user", "content": prompt})
-                response = st.session_state.chat_engine.chat(prompt)
+                response = st.session_state.chat_engine.run(prompt)
                 st.session_state.messages.append({"role": "assistant", "content": response}) # Add response to message history
 
         
@@ -152,6 +152,7 @@ def main():
             with st.spinner("Thinking..."):
                 st.session_state["button_pressed"] = True
                 result_df = pd.DataFrame()
+                result_df_showcase = pd.DataFrame()
                 df = define_criteria(save_dir,job_title,job_description,job_requirement,applicant_category)
 
                 doc2pdf(save_dir)
@@ -164,25 +165,25 @@ def main():
                     st.write(candidate_dict)
                     # Convert the dictionary to a DataFrame
                     df = pd.DataFrame([candidate_dict])
+                    df_showcase_result = df.copy()
+
+                    single_row_previous_jobs = format_info_field(candidate_dict, "previous_job_roles")
+                    single_row_edu_background = format_info_field(candidate_dict, "education_background")
+                    single_row_location = format_info_field(candidate_dict, "current_location")
+
+                    df_showcase_result["previous_job_roles"] = single_row_previous_jobs
+                    df_showcase_result["education_background"] = single_row_edu_background
+                    df_showcase_result["current_location"] = single_row_location
+                    
                     # Append the result DataFrame to the main DataFrame
                     result_df = pd.concat([result_df, df], ignore_index=True)
-                
-                df_showcase_result = result_df.copy()    
-                single_row_previous_jobs = format_info_field(candidate_dict, "previous_job_roles")
-                df_showcase_result["previous_job_roles"] = single_row_previous_jobs
-                
-                single_row_edu_background = format_info_field(candidate_dict, "education_background")
-                df_showcase_result["education_background"] = single_row_edu_background
-
-                single_row_location = format_info_field(candidate_dict, "current_location")
-                df_showcase_result["current_location"] = single_row_location
-                
+                    result_df_showcase = pd.concat([result_df_showcase, df_showcase_result], ignore_index=True)
 
                 # Display the Excel file in the chat and provide a download link
                 result_df.to_excel(os.path.join(save_dir, 'results.xlsx'))
                 st.session_state.messages = [{"role": "assistant", "content": f"Resume Parsing is done for all resumes! You may hover to the table below to download the results!","type":'message'}]
                 
-                message = {"role": "assistant", "content": df_showcase_result,"type":'dataframe'}
+                message = {"role": "assistant", "content": result_df_showcase,"type":'dataframe'}
                 st.session_state.messages.append(message)
 
     if "button_pressed" in st.session_state.keys():
@@ -225,17 +226,11 @@ def main():
                         st.session_state.data_dict_final.to_excel(os.path.join(save_dir, 'post_criteria_evaluation.xlsx'), index=False)
 
                         df_evaluation_showcase_result = st.session_state.data_dict_final.copy()
-                        candidate_dict_evaluation = st.session_state.data_dict_final.to_dict()
 
-                        single_row_previous_jobs = format_info_field_evaluation(candidate_dict_evaluation, "previous_job_roles")
-                        df_evaluation_showcase_result["previous_job_roles"] = single_row_previous_jobs
-                        
-                        single_row_edu_background = format_info_field_evaluation(candidate_dict_evaluation, "education_background")
-                        df_evaluation_showcase_result["education_background"] = single_row_edu_background
-
-                        single_row_location = format_info_field_evaluation(candidate_dict_evaluation, "current_location")
-                        df_evaluation_showcase_result["current_location"] = single_row_location
-
+                        # Apply the format_info_field_evaluation function to each row in the specified columns
+                        df_evaluation_showcase_result["previous_job_roles"] = df_evaluation_showcase_result["previous_job_roles"].apply(format_info_field_evaluation)
+                        df_evaluation_showcase_result["education_background"] = df_evaluation_showcase_result["education_background"].apply(format_info_field_evaluation)
+                        df_evaluation_showcase_result["current_location"] = df_evaluation_showcase_result["current_location"].apply(format_info_field_evaluation)
 
                         st.session_state["post_evaluation"] = True
                         st.session_state.messages.append({"role": "assistant", "content": "You can now start chatting with the results!","type":"message"})
@@ -257,6 +252,7 @@ def main():
         st.session_state.chat_engine = default_chat 
 
     if "post_evaluation" in st.session_state.keys():
+        default_chat = DefaultChat()
         post_evaluation_chat = PandasChat(sav_dir=save_dir,batch_token=st.session_state.batch_token)
         tools = [
             Tool(
@@ -292,7 +288,9 @@ def main():
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
                 response = st.session_state.chat_engine.run(prompt)
-                st.session_state.messages.append({"role": "assistant", "content": response,"type":"message"}) # Add response to message history
+                st.write(response)
+                st.session_state.messages.append({"role": "assistant", "content": response}) # Add response to message history
+                
 
 if __name__ == "__main__":
     main()

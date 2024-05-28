@@ -1,4 +1,4 @@
-from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_community.chat_models import ChatOpenAI
 import uuid
 import streamlit as st
@@ -55,7 +55,7 @@ Strict Format of either one:
         ]
     )
 
-    loader = PyPDFLoader(file_path, extract_images=True)
+    loader = PyMuPDFLoader(file_path, extract_images=True)
     # loader = PyPDFLoader(file_path)
     documents = loader.load()
 
