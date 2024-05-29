@@ -44,7 +44,7 @@ def format_info_field_evaluation(entries):
             output_string = f"{i}. "
             for key, value in entry.items():
                 output_string += f"{key}: {value} | "  # Append key-value pairs
-            formatted_entries.append(output_string.rstrip(' | '))  # Remove trailing ' | '
+            formatted_entries.append(output_string)  # Remove trailing ' | '
         return '\n'.join(formatted_entries)
     except AttributeError:
         return entries
@@ -52,11 +52,17 @@ def format_info_field_evaluation(entries):
 def replace_degrees(text):
     return re.sub(r"\b(Bachelor's|Master's)\b", lambda m: m.group(0).replace("'", ""), text)
 
+def replace_s_but_not_start_date(text):
+    # This regex looks for 's' that is not preceded by 'start_date'
+    pattern = r"'s "
+    return re.sub(pattern, " ", text)
+
 
 def evaluate_criteria_pipeline(data_dict, criteria_df, resume_parser):
     total_score = 0
     data_dict['education_background'] = data_dict['education_background'].apply(replace_degrees)
     data_dict['education_background'] = data_dict['education_background'].apply(lambda x: json.loads(x.replace("'", '"')))
+    data_dict['previous_job_roles'] = data_dict['previous_job_roles'].apply(replace_s_but_not_start_date)
     data_dict['previous_job_roles'] = data_dict['previous_job_roles'].apply(lambda x: json.loads(x.replace("'", '"')))
     data_dict['current_location'] = data_dict['current_location'].apply(lambda x: json.loads(x.replace("'", '"')))
     data_dict['language'] = data_dict['language'].apply(lambda x: json.loads(x.replace("'", '"')))
@@ -165,6 +171,7 @@ def main():
                     st.write(candidate_dict)
                     # Convert the dictionary to a DataFrame
                     df = pd.DataFrame([candidate_dict])
+                    df['file_name'] = filename
                     df_showcase_result = df.copy()
 
                     single_row_previous_jobs = format_info_field(candidate_dict, "previous_job_roles")
@@ -255,11 +262,14 @@ def main():
         default_chat = DefaultChat()
         post_evaluation_chat = PandasChat(sav_dir=save_dir,batch_token=st.session_state.batch_token)
         tools = [
+            #Structured
             Tool(
                 name="Resume Evaluation Results DataFrame QA System",
                 func=post_evaluation_chat.run,
                 description="useful for when you need to answer questions about the information of the candidates or evaluation results dataframe. Input should be a fully formed question.",
             ),
+
+            #Unstructured
             Tool(
                 name="Resume Parser Tool QA System",
                 func=default_chat.run,

@@ -28,7 +28,7 @@ def extract_information(file_path,job_title):
 [Instruction] Extract relevant candidate's information mentioned in the following candidate's resume following the predefined properties.
 1) Please provide accurate answers, no guessing.
 2) Please return 'N/A' string for all the information that is not mentioned. Do not return NaN.
-3) If current_location is missing, return 'Country': 'N/A', 'State': 'N/A', 'City': 'N/A' as a dict in a list.
+3) If current_location is missing, return 'Country': 'N/A', 'State': 'N/A', 'City': 'N/A' as a dict in a list. Do not return empty list.
 5) For previous_job_roles , all of the keys (job_title,job_company,Industries,start_date,end_date,job_location,job_duration) must be present. Assign N/A to the values of the key if not mentioned.
 4) Extracted Properties of all Start date and End date:
 * if the month is not stated, assume that start/end date is in the middle of the year.

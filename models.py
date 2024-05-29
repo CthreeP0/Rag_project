@@ -19,7 +19,7 @@ class Candidate(BaseModel):
     )
     current_location: Optional[List] = Field(
         ..., 
-        description="Candidate's current location/ address, assign the country based on the state and city. **You must return them in key-value pairs with Country, State, City as keys. Example: [{'Country': '', 'State': '', 'City': ''}] **",
+        description="Candidate's current location/ address, assign the country based on the state and city. **You must return them in key-value pairs with Country, State, City as keys, even if they are not mentioned. Example: [{'Country': 'N/A', 'State': 'N/A', 'City': 'N/A'}] **",
         pattern = '\[\{\s*"Country"\s*:\s*"[^"]*"\s*,\s*"State"\s*:\s*"[^"]*"\s*,\s*"City"\s*:\s*"[^"]*"\s*\}\]'
     )
     education_background: Optional[List] = Field(

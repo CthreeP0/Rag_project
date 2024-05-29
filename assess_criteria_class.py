@@ -164,8 +164,7 @@ class ResumeParser:
             3. You should only assess the candidate's Field of Study and it's level. Ignore any other criterias.
 
             [Steps]
-            Step 1 : Start the evaluation by giving reasons, Be as objective as possible.
-            Step 2 : You must rate the candidate on a scale of 1 to 10 by strictly following this format: "[[rating]]", 
+            Step 1 : You must rate the candidate on a scale of 1 to 10 by strictly following this format: "[[rating]]", 
             for example:
             "Education Background Rating: [[6]].
 
