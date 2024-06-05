@@ -121,7 +121,7 @@ def main():
         os.makedirs(save_dir, exist_ok=True)
 
         # File uploader
-        uploaded_files = st.file_uploader("Drop your resume here", accept_multiple_files=True)
+        uploaded_files = st.file_uploader("Drop your resume here", accept_multiple_files=True, type=['docx','doc','pdf'])
 
         # Check if files are uploaded
         if uploaded_files is not None:
@@ -158,43 +158,46 @@ def main():
     if submitted:
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
-                st.session_state["button_pressed"] = True
-                result_df = pd.DataFrame()
-                result_df_showcase = pd.DataFrame()
-                df = define_criteria(save_dir,job_title,job_description,job_requirement,applicant_category)
+                try:
+                    st.session_state["button_pressed"] = True
+                    result_df = pd.DataFrame()
+                    result_df_showcase = pd.DataFrame()
+                    df = define_criteria(save_dir,job_title,job_description,job_requirement,applicant_category)
 
-                doc2pdf(save_dir)
-                # Get a list of PDF files in the directory
-                pdf_files = [filename for filename in os.listdir(save_dir) if filename.endswith(".pdf")]
+                    doc2pdf(save_dir)
+                    # Get a list of PDF files in the directory
+                    pdf_files = [filename for filename in os.listdir(save_dir) if filename.endswith(".pdf")]
 
-                for filename in pdf_files:
-                    result = extract_information(os.path.join(save_dir, filename),job_title)
-                    candidate_dict = result.dict()
-                    st.write(candidate_dict)
-                    # Convert the dictionary to a DataFrame
-                    df = pd.DataFrame([candidate_dict])
-                    df['file_name'] = filename
-                    df_showcase_result = df.copy()
+                    for filename in pdf_files:
+                        result = extract_information(os.path.join(save_dir, filename),job_title)
+                        candidate_dict = result.dict()
+                        st.write(candidate_dict)
+                        # Convert the dictionary to a DataFrame
+                        df = pd.DataFrame([candidate_dict])
+                        df['file_name'] = filename
+                        df_showcase_result = df.copy()
 
-                    single_row_previous_jobs = format_info_field(candidate_dict, "previous_job_roles")
-                    single_row_edu_background = format_info_field(candidate_dict, "education_background")
-                    single_row_location = format_info_field(candidate_dict, "current_location")
+                        single_row_previous_jobs = format_info_field(candidate_dict, "previous_job_roles")
+                        single_row_edu_background = format_info_field(candidate_dict, "education_background")
+                        single_row_location = format_info_field(candidate_dict, "current_location")
 
-                    df_showcase_result["previous_job_roles"] = single_row_previous_jobs
-                    df_showcase_result["education_background"] = single_row_edu_background
-                    df_showcase_result["current_location"] = single_row_location
+                        df_showcase_result["previous_job_roles"] = single_row_previous_jobs
+                        df_showcase_result["education_background"] = single_row_edu_background
+                        df_showcase_result["current_location"] = single_row_location
+                        
+                        # Append the result DataFrame to the main DataFrame
+                        result_df = pd.concat([result_df, df], ignore_index=True)
+                        result_df_showcase = pd.concat([result_df_showcase, df_showcase_result], ignore_index=True)
+
+                    # Display the Excel file in the chat and provide a download link
+                    result_df.to_excel(os.path.join(save_dir, 'results.xlsx'))
+                    st.session_state.messages = [{"role": "assistant", 
+                                                "content": "Resume Parsing is done for all resumes! You may hover to the table below to download the results! If you wish to evaluate the candidates, please navigate to the sidebar!"}]
                     
-                    # Append the result DataFrame to the main DataFrame
-                    result_df = pd.concat([result_df, df], ignore_index=True)
-                    result_df_showcase = pd.concat([result_df_showcase, df_showcase_result], ignore_index=True)
-
-                # Display the Excel file in the chat and provide a download link
-                result_df.to_excel(os.path.join(save_dir, 'results.xlsx'))
-                st.session_state.messages = [{"role": "assistant", 
-                                              "content": "Resume Parsing is done for all resumes! You may hover to the table below to download the results! If you wish to evaluate the candidates, please navigate to the sidebar!"}]
-                
-                message = {"role": "assistant", "content": result_df_showcase,"type":'dataframe'}
-                st.session_state.messages.append(message)
+                    message = {"role": "assistant", "content": result_df_showcase,"type":'dataframe'}
+                    st.session_state.messages.append(message)
+                except:
+                    st.error("Please retry with valid resumes.")
 
     if "button_pressed" in st.session_state.keys():
         with st.sidebar:
