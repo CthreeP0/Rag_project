@@ -71,6 +71,9 @@ class Criteria(BaseModel):
     language: Optional[str] = Field(
         ..., description="Preferred language required for the job. If not specified, suggest it. return the result in comma seperated form."
     )
+    candidate_current_location: Optional[str] = Field(
+        ..., description="Preferred candidate's current location required for the job. If not specified, suggest it."
+    )
     targeted_employer: Optional[str] = Field(
         ..., description="Preferred inclusion or exclusion of candidate's previous company required for the job. **You must return them in this format: 'include(), exclude()' ** ",
         pattern = '^(include\((.*?)\)\s*,\s*exclude\((.*?)\)\s*)+$',
@@ -107,6 +110,9 @@ class Weightage(BaseModel):
     )
     language_weigh: Optional[str] = Field(
         ..., description="Weightage assigned to the language criteria"
+    )
+    candidate_current_location_weigh: Optional[str] = Field(
+        ..., description="Weightage assigned to the candidate_current_location criteria"
     )
     soft_skill_weigh: Optional[str] = Field(
         ..., description="Weightage assigned to the soft_skill criteria"

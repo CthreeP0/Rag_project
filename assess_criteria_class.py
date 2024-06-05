@@ -331,7 +331,7 @@ class ResumeParser:
     
         c_total_yr_exp, out_weighted_score = 0.0, 0.0
         
-        def gpt_calc_total_exp():
+        def calc_total_exp():
             # Check if 'previous_job_roles' exists and is a list
             
             total_duration = 0
@@ -345,16 +345,15 @@ class ResumeParser:
                     # Handle case where conversion to float fails
                     print(f"Error converting job duration to float for role: {role.get('job_title')}. Skipping this entry.")
                     continue  # Skip this entry and continue with the next
-            print (f"gpt4 total yr: {total_duration}")
                     
             return round(total_duration, 2)
 
         # Manual: Total duration
-        total_experience_gpt4 = gpt_calc_total_exp()
+        total_experience = calc_total_exp()
         # Use parse_range to get the lower and upper limits and condition
         in_threshold_lower_limit, in_threshold_upper_limit, condition = self.parse_range(input_string)
         try:
-            c_total_yr_exp = float(total_experience_gpt4)
+            c_total_yr_exp = float(total_experience)
             if c_total_yr_exp < in_threshold_lower_limit:
                 out_weighted_score = 0  # does not meet requirement
             elif in_threshold_lower_limit <= c_total_yr_exp <= in_threshold_upper_limit:
@@ -368,7 +367,7 @@ class ResumeParser:
             # Handle the case where conversion to float fails
             out_weighted_score = 0  
         
-        return total_experience_gpt4,out_weighted_score
+        return total_experience,out_weighted_score
 
 
     def evaluate_total_similar_experience_year_score(self,data_dict, input, weightage):

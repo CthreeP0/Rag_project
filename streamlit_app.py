@@ -12,6 +12,7 @@ from default_chat import DefaultChat
 from pandas_chat import PandasChat
 from langchain.agents import AgentType, Tool, initialize_agent
 from streamlit_pills import pills
+from verify_input import verify_input
 import re
 
 load_dotenv(".env")
@@ -20,6 +21,7 @@ os.environ["LANGCHAIN_PROJECT"] = f"FYP-Goo"
 os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
 os.environ["LANGCHAIN_API_KEY"] = os.environ.get('LANGCHAIN_API_KEY')
 llm = ChatOpenAI(model="gpt-3.5-turbo-0125", temperature=0)
+
 
 def format_info_field(extracted_info_dict, field_name):
     try:
@@ -188,7 +190,8 @@ def main():
 
                 # Display the Excel file in the chat and provide a download link
                 result_df.to_excel(os.path.join(save_dir, 'results.xlsx'))
-                st.session_state.messages = [{"role": "assistant", "content": f"Resume Parsing is done for all resumes! You may hover to the table below to download the results!","type":'message'}]
+                st.session_state.messages = [{"role": "assistant", 
+                                              "content": "Resume Parsing is done for all resumes! You may hover to the table below to download the results! If you wish to evaluate the candidates, please navigate to the sidebar!"}]
                 
                 message = {"role": "assistant", "content": result_df_showcase,"type":'dataframe'}
                 st.session_state.messages.append(message)
@@ -196,12 +199,18 @@ def main():
     if "button_pressed" in st.session_state.keys():
         with st.sidebar:
             st.subheader('Define your evaluation criteria here!')
+            st.markdown("You may edit the `details`, `weightage` and `selected` columns for this job evaluation.")
             st.markdown("Please refer to [this link](https://github.com/yejui626/fyp_goo?tab=readme-ov-file#3-what-is-the-format-for-the-evaluating-criteria-details-that-users-should-follow) for the criteria details format.")
 
             # Create DataFrame
             df = pd.read_csv(os.path.join(save_dir, 'criteria.csv'))
 
-            edited_df = st.data_editor(df,disabled=['criteria'],key='df')
+            edited_df = st.data_editor(df, disabled=['criteria'], key='df')
+
+            verify_df = edited_df.set_index('criteria')
+            # st.write(verify_df)
+            if verify_input(verify_df):
+                st.success("All inputs are valid!")
 
             favorite_command = edited_df.loc[edited_df["weightage"].idxmax()]["criteria"]
             selected_criterias = list(edited_df.loc[edited_df["selected"]]["criteria"])
