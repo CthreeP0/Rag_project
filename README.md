@@ -34,15 +34,12 @@
 |----------------------------------|------------------------------------------------------|------------------------------------------------------------|
 | Education Background             | [Enter preferred education background]               | bachelor's or master's degree in data science              |
 | Academic Result (CGPA)           | [Enter minimum CGPA]                                 | 3.85                                                       |
-| Skill Groups                     | [Value], [Value], [Value]                            | Project Management, Coding                                 |
+| Technical Skills                    | [Value], [Value], [Value]                            | Project Management, Coding                                 |
 | Years of Total Work Experience   | "Option 1: Number<br>Option 2: Number-Number<br>Option 3: >Number<br>Option 4: <Number" | 20                                                         |
-| Match Phrase                     | [Value], [Value], [Value]                            | petronas digital, spearhead                                |
-| Technology (Tools, Program, System) | [Value], [Value], [Value]                            | Word, Excel, PowerPoint                                    |
-| Years of Experience in Exact Role| "Option 1: Number<br>Option 2: Number-Number<br>Option 3: >Number<br>Option 4: <Number" | 5-10                                                       |
+| Years of Experience in Similar Role| "Option 1: Number<br>Option 2: Number-Number<br>Option 3: >Number<br>Option 4: <Number" | 5-10                                                       |
 | Professional Certificate         | [Value], [Value], [Value]                            | ACCA, CFA I, CFA II                                        |
 | Candidate Current Location       | "Option 1: Country<br>Option 2: State, Country<br>Option 3: City, State, Country" | "Option 1: Canada<br>Option 2: Sarawak, Malaysia<br>Option 3: Kuala Lumpur, Wilayah Persekutuan, Malaysia" |
 | Targeted Employer                | include(Value, Value), exclude(Value, Value)         | include(Shell, BP), exclude(KLCC, ABC)                     |
-| Age                              | "Option 1: Number<br>Option 2: Number-Number<br>Option 3: >Number<br>Option 4: <Number" | >50                                                        |
 | Language                         | [Value], [Value], [Value]                            | English, Mandarin, Arabic                                  |
 | Expected Salary in RM            | "Option 1: Number<br>Option 2: Number-Number<br>Option 3: >Number<br>Option 4: <Number" | <500000                                                    |
 | Years of Graduation              | [Enter year of graduation]                           | 2024                                                       |
