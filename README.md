@@ -1,12 +1,84 @@
 # Generative AI Resume Parser
 
-## 1. Who Am I?
+Welcome to the CV Parser project repository! This project leverages advanced AI technologies to automate the resume screening process, significantly improving recruitment efficiency.
+
+
+## Table of Contents
+
+- [Introduction](#introduction)
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Acknowledgments](#acknowledgments)
+- [Q&A](#Q&A)
+
+
+## Introduction
+
+Recruitment often involves a labor-intensive and time-consuming task of screening resumes. This project introduces a generative AI resume parser that automates the resume screening process. By utilizing Generative AI models, and Optical Character Recognition (OCR) technology, this system efficiently extracts and analyzes information from various resume formats, including scanned documents.
+
+
+## Features
+
+- **Generative AI Models**: Analyze, understand and extract information from resumes.
+- **OCR Technology**: Extract data from scanned documents.
+- **Automated Data Extraction**: Extract personal data, work history, skills, certifications, and educational background.
+- **Candidate Ranking**: Match candidate profiles against job-specific criteria and rank them accordingly.
+- **Efficiency Improvement**: Significantly reduce the manual labor needed for preliminary resume screenings.
+
+
+## Installation
+
+1. Clone the repository:
+    ```bash
+    git clone https://github.com/yourusername/cv-parser.git
+    cd cv-parser
+    ```
+
+2. Create a virtual environment and activate it:
+    ```bash
+    python -m venv venv
+    source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+    ```
+
+3. Install the required dependencies:
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+4. Ensure you have the necessary API keys for the AI models (OpenAI, etc.), and add them to your environment variables or configuration file.
+
+
+## Usage
+
+1. Prepare your resumes in .docx, .doc or .pdf format.
+
+2. Run the main script to start the CV parser:
+    ```bash
+    streamlit run streamlit_app.py
+    ```
+
+3. Follow the on-screen instructions to input job descriptions and requirements, and to view the extracted data and candidate rankings.
+
+
+## Acknowledgments
+
+I would like to express my gratitude to my industry coach, Dr. Bassam, and my university coach, Dr. Haza, for their invaluable guidance and support throughout this project. Their insights and encouragement have been instrumental in the successful completion of this work.
+
+---
+
+Thank you for using the CV Parser project! If you have any questions or feedback, feel free to open an issue in this repository.
+
+
+## Q&A
+
+### 1. Who Am I?
 
 **Question:** What is the purpose of the Resume Parser tool?
 
 **Answer:** The Resume Parser tool is designed to efficiently extract and evaluate key information from resumes. It helps streamline the recruitment process by automatically analyzing resumes against specified criteria, such as education background, work experience, skills, and more. The tool also provides a GPT-generated recommendation summary for each candidate, enhancing the evaluation process by offering insights based on the extracted data.
 
-## 2. What are the expected outputs for the extracted results?
+### 2. What are the expected outputs for the extracted results?
 
 **Question:** What information does the Resume Parser tool extract from a candidate's resume?
 
@@ -24,7 +96,7 @@
 - **Languages:** Languages the candidate can speak or write.
 - **Previous Job Roles:** Information about the candidate's past job roles, including job titles, companies, industries, start and end dates, job locations, and the duration of each job in years.
 
-## 3. What is the format for the evaluating criteria details that users should follow?
+### 3. What is the format for the evaluating criteria details that users should follow?
 
 **Question:** How should users format the details for evaluating criteria?
 
